@@ -1,0 +1,390 @@
+/* Global Animations */
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+body {
+    animation: gradientShift 15s ease infinite;
+}
+
+/* Particle Animations */
+@keyframes float {
+    0% {
+        transform: translateY(100vh) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+.particle {
+    animation: float 20s infinite linear;
+}
+
+/* Hero Section Animations */
+@keyframes heroGlow {
+    0% { box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 50px rgba(102, 126, 234, 0.3); }
+    100% { box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 80px rgba(118, 75, 162, 0.4); }
+}
+
+.hero-section {
+    animation: heroGlow 4s ease-in-out infinite alternate;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+.hero-section::before {
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes titlePulse {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.02); }
+}
+
+.hero-title {
+    animation: titlePulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes subtitleFade {
+    0% { opacity: 0.9; }
+    100% { opacity: 1; }
+}
+
+.hero-subtitle {
+    animation: subtitleFade 3s ease-in-out infinite alternate;
+}
+
+@keyframes iconBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.feature-icon {
+    animation: iconBounce 2s ease-in-out infinite;
+}
+
+/* Modal Animations */
+@keyframes modalSlideIn {
+    0% { transform: translateY(50px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+.auth-modal {
+    animation: modalSlideIn 0.5s ease-out;
+}
+
+@keyframes borderFlow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.auth-modal::before {
+    animation: borderFlow 3s ease infinite;
+}
+
+@keyframes modalFadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+.modal {
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalSlideUp {
+    0% { transform: translateY(50px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+.modal-content {
+    animation: modalSlideUp 0.4s ease;
+}
+
+/* Logo Animations */
+@keyframes logoGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.logo {
+    animation: logoGradient 3s ease infinite;
+}
+
+/* Avatar Animations */
+@keyframes avatarPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.user-avatar {
+    animation: avatarPulse 3s ease-in-out infinite;
+}
+
+/* Product Image Animations */
+@keyframes gradientMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.product-image {
+    animation: gradientMove 8s ease infinite;
+}
+
+@keyframes spotlight {
+    0%, 100% { transform: translate(-50%, -50%) scale(0); }
+    50% { transform: translate(-25%, -25%) scale(1); }
+}
+
+.product-image::before {
+    animation: spotlight 6s ease-in-out infinite;
+}
+
+/* Stats Bar Animations */
+@keyframes statsGlow {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.stats-bar::before {
+    animation: statsGlow 4s ease infinite;
+}
+
+@keyframes statGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.stat-number {
+    animation: statGradient 3s ease infinite;
+}
+
+/* Floating Button Animations */
+@keyframes floatingPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.floating-add-btn {
+    animation: floatingPulse 3s ease-in-out infinite;
+}
+
+@keyframes borderRotate {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+}
+
+.floating-add-btn::before {
+    animation: borderRotate 3s linear infinite;
+}
+
+/* Loading Animation */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* Error Message Animations */
+@keyframes errorShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.error-message {
+    animation: errorShake 0.5s ease;
+}
+
+/* Success Message Animations */
+@keyframes successSlide {
+    0% { transform: translateY(-20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+.success-message {
+    animation: successSlide 0.5s ease;
+}
+
+/* Product Detail Modal Animations */
+@keyframes productIconBounce {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-10px) rotate(5deg); }
+    75% { transform: translateY(-5px) rotate(-5deg); }
+}
+
+.product-detail-icon {
+    animation: productIconBounce 2s ease-in-out infinite;
+}
+
+/* Card Entrance Animations */
+@keyframes cardSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.product-card.animate-in {
+    animation: cardSlideIn 0.6s ease-out;
+}
+
+/* Search Bar Focus Animation */
+@keyframes searchFocus {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+.search-bar input:focus {
+    animation: searchFocus 0.3s ease;
+}
+
+/* Button Hover Effects */
+@keyframes buttonPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.btn:active {
+    animation: buttonPulse 0.2s ease;
+}
+
+/* Category Item Hover Animation */
+@keyframes categorySlide {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(10px); }
+}
+
+.category-list li:hover {
+    animation: categorySlide 0.3s ease forwards;
+}
+
+/* Filter Tag Active Animation */
+@keyframes tagActivate {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1.05); }
+}
+
+.filter-tag.active {
+    animation: tagActivate 0.4s ease;
+}
+
+/* Tooltip Fade Animation */
+@keyframes tooltipFade {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+.tooltip:hover .tooltiptext {
+    animation: tooltipFade 0.3s ease;
+}
+
+/* Page Transition Animations */
+@keyframes pageSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.page-transition {
+    animation: pageSlideIn 0.5s ease-out;
+}
+
+/* Notification Animations */
+@keyframes notificationSlide {
+    0% {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    15% {
+        transform: translateX(-10px);
+        opacity: 1;
+    }
+    30% {
+        transform: translateX(0);
+    }
+    85% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+.notification {
+    animation: notificationSlide 4s ease-in-out;
+}
+
+/* Typing Animation for Loading States */
+@keyframes typing {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+    100% { content: ''; }
+}
+
+.typing-dots::after {
+    content: '';
+    animation: typing 1.5s infinite;
+}
+
+/* Stagger Animation for Multiple Items */
+.stagger-item:nth-child(1) { animation-delay: 0.1s; }
+.stagger-item:nth-child(2) { animation-delay: 0.2s; }
+.stagger-item:nth-child(3) { animation-delay: 0.3s; }
+.stagger-item:nth-child(4) { animation-delay: 0.4s; }
+.stagger-item:nth-child(5) { animation-delay: 0.5s; }
+.stagger-item:nth-child(6) { animation-delay: 0.6s; }
+
+/* Responsive Animation Adjustments */
+@media (max-width: 768px) {
+    .hero-title {
+        animation-duration: 3s;
+    }
+    
+    .feature-icon {
+        animation-duration: 3s;
+    }
+    
+    .floating-add-btn {
+        animation-duration: 4s;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
