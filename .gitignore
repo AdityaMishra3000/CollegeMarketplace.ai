@@ -12,7 +12,7 @@ node_modules/
 npm-debug.log
 yarn-error.log
 yarn-debug.log
-package-lock.json # (Optional: keep this commented if you want to track exact versions)
+package-lock.json 
 .next/
 build/
 dist/
