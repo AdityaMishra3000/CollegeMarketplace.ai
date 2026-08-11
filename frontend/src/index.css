@@ -1,117 +1,200 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..700;1,14..32,400..600&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss";
 
+/* Class-based dark mode driven by ThemeContext (adds `.dark` on <html>) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  Design tokens.
+  Two deliberately-authored themes — not "white" vs "black".
+  Light  = cool, paper-like neutrals with a confident indigo brand.
+  Dark   = deep slate (never pure black) with the same hierarchy preserved.
+*/
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --radius: 0.75rem;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Surfaces */
+  --background: oklch(0.985 0.003 264);
+  --foreground: oklch(0.21 0.021 266);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.021 266);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.021 266);
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Muted / subtle */
+  --muted: oklch(0.968 0.004 264);
+  --muted-foreground: oklch(0.522 0.02 264);
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+  /* Secondary surface */
+  --secondary: oklch(0.955 0.006 264);
+  --secondary-foreground: oklch(0.30 0.021 266);
+
+  /* Brand */
+  --primary: oklch(0.515 0.176 264);
+  --primary-foreground: oklch(0.99 0.004 264);
+
+  /* Accent = subtle brand-tinted interactive surface */
+  --accent: oklch(0.952 0.021 266);
+  --accent-foreground: oklch(0.45 0.16 264);
+
+  /* Semantic */
+  --destructive: oklch(0.585 0.205 26);
+  --destructive-foreground: oklch(0.99 0.004 26);
+  --danger: oklch(0.585 0.205 26);
+  --success: oklch(0.595 0.13 156);
+  --warning: oklch(0.72 0.15 74);
+  --info: oklch(0.515 0.176 264);
+
+  /* Lines */
+  --border: oklch(0.92 0.005 264);
+  --border-strong: oklch(0.86 0.008 264);
+  --input: oklch(0.91 0.006 264);
+  --ring: oklch(0.515 0.176 264);
+
+  color-scheme: light;
+}
+
+.dark {
+  /* Surfaces */
+  --background: oklch(0.181 0.015 266);
+  --foreground: oklch(0.945 0.006 264);
+  --card: oklch(0.216 0.017 266);
+  --card-foreground: oklch(0.945 0.006 264);
+  --popover: oklch(0.232 0.018 266);
+  --popover-foreground: oklch(0.945 0.006 264);
+
+  /* Muted / subtle */
+  --muted: oklch(0.262 0.017 266);
+  --muted-foreground: oklch(0.685 0.016 264);
+
+  /* Secondary surface */
+  --secondary: oklch(0.272 0.017 266);
+  --secondary-foreground: oklch(0.92 0.006 264);
+
+  /* Brand — brighter so it holds up on dark surfaces */
+  --primary: oklch(0.66 0.16 264);
+  --primary-foreground: oklch(0.16 0.02 266);
+
+  /* Accent */
+  --accent: oklch(0.305 0.032 266);
+  --accent-foreground: oklch(0.82 0.10 264);
+
+  /* Semantic */
+  --destructive: oklch(0.63 0.19 26);
+  --destructive-foreground: oklch(0.98 0.004 26);
+  --danger: oklch(0.70 0.17 26);
+  --success: oklch(0.70 0.14 156);
+  --warning: oklch(0.78 0.15 74);
+  --info: oklch(0.66 0.16 264);
+
+  /* Lines */
+  --border: oklch(0.30 0.015 266);
+  --border-strong: oklch(0.40 0.02 266);
+  --input: oklch(0.34 0.016 266);
+  --ring: oklch(0.66 0.16 264);
+
+  color-scheme: dark;
+}
+
+/* Map tokens to Tailwind's theme so utilities like bg-card / text-primary work */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas,
+    monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --animate-shimmer: shimmer 1.6s infinite;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Tabular, monospace numerals for prices, metrics and IDs */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Refined focus ring used across interactive elements */
+  :focus-visible {
+    outline: none;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--color-primary) 26%, transparent);
+  }
+
+  /* Comfortable, quiet scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border-strong) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--color-border-strong);
+    border-radius: 9999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-muted-foreground);
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-body {
-  margin: 0;
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }
