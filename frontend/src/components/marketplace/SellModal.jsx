@@ -1,11 +1,22 @@
 import { useState } from 'react'
-import { Sparkles, Loader2 } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Sparkles, ImageOff } from 'lucide-react'
 import Modal from '../ui/Modal'
 import { Input, Field, Select, Textarea } from '../ui/Input'
+import { Button } from '../ui/Button'
 import { CATEGORIES, CONDITIONS } from '../../lib/constants'
 import { createProduct } from '../../api/products'
 import { predictPrice } from '../../api/ai'
 import { useToast } from '../ui/Toast'
+import { fadeUp, feedbackPop, staggerContainer } from '../../lib/motion'
+
+function SectionLabel({ children }) {
+  return (
+    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+      {children}
+    </p>
+  )
+}
 
 export default function SellModal({ open, onClose, onSuccess }) {
   const { toast } = useToast()
@@ -13,6 +24,7 @@ export default function SellModal({ open, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false)
   const [priceLoading, setPriceLoading] = useState(false)
   const [priceSuggestion, setPriceSuggestion] = useState(null)
+  const [imageError, setImageError] = useState(false)
 
   const [formData, setFormData] = useState({
     title: '',
@@ -30,6 +42,10 @@ export default function SellModal({ open, onClose, onSuccess }) {
       ...prev,
       [name]: value,
     }))
+
+    if (name === 'imageUrl') {
+      setImageError(false)
+    }
 
     // The old AI suggestion is no longer valid if
     // the listing details change.
@@ -148,54 +164,129 @@ export default function SellModal({ open, onClose, onSuccess }) {
     }
   }
 
+  const hasPreview = formData.imageUrl.trim() && !imageError
+
   return (
     <Modal open={open} onClose={onClose} title="List an Item">
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <Field label="Title" htmlFor="title">
-          <Input
-            id="title"
-            name="title"
-            type="text"
-            placeholder="e.g. MacBook Air M1"
-            value={formData.title}
-            onChange={handleChange}
-            required
-          />
-        </Field>
+      <motion.form
+        onSubmit={handleSubmit}
+        className="space-y-6"
+        variants={staggerContainer(0.06)}
+        initial="hidden"
+        animate="show"
+      >
+        {/* IDENTITY */}
+        <motion.div variants={fadeUp} className="space-y-4">
+          <SectionLabel>Item details</SectionLabel>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Price (₹)" htmlFor="price">
+          <Field label="Title" htmlFor="title">
             <Input
-              id="price"
-              name="price"
-              type="number"
-              step="1"
-              min="0"
-              placeholder="0"
-              value={formData.price}
+              id="title"
+              name="title"
+              type="text"
+              placeholder="e.g. MacBook Air M1"
+              value={formData.title}
               onChange={handleChange}
               required
             />
           </Field>
 
-          <Field label="Category" htmlFor="category">
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Price (₹)" htmlFor="price">
+              <Input
+                id="price"
+                name="price"
+                type="number"
+                step="1"
+                min="0"
+                placeholder="0"
+                value={formData.price}
+                onChange={handleChange}
+                required
+              />
+            </Field>
+
+            <Field label="Category" htmlFor="category">
+              <Select
+                id="category"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+
+          <Field label="Condition" htmlFor="condition">
             <Select
-              id="category"
-              name="category"
-              value={formData.category}
+              id="condition"
+              name="condition"
+              value={formData.condition}
               onChange={handleChange}
             >
-              {CATEGORIES.map((c) => (
+              {CONDITIONS.map((c) => (
                 <option key={c.value} value={c.value}>
                   {c.label}
                 </option>
               ))}
             </Select>
           </Field>
-        </div>
+        </motion.div>
+
+        {/* PHOTO */}
+        <motion.div variants={fadeUp} className="space-y-3">
+          <SectionLabel>Photo</SectionLabel>
+
+          <div className="grid grid-cols-[1fr_auto] gap-4 sm:grid-cols-[1fr_140px]">
+            <Field label="Image URL" htmlFor="imageUrl">
+              <Input
+                id="imageUrl"
+                name="imageUrl"
+                type="url"
+                placeholder="https://images.unsplash.com/..."
+                value={formData.imageUrl}
+                onChange={handleChange}
+              />
+            </Field>
+
+            {/* Live preview — reflects the listing photo before submission */}
+            <div className="flex h-[74px] w-full items-end overflow-hidden rounded-lg border border-dashed border-border bg-muted sm:h-auto">
+              <AnimatePresence mode="wait" initial={false}>
+                {hasPreview ? (
+                  <motion.img
+                    key={formData.imageUrl}
+                    src={formData.imageUrl}
+                    alt="Listing preview"
+                    onError={() => setImageError(true)}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <motion.div
+                    key="placeholder"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground"
+                  >
+                    <ImageOff className="h-4 w-4" />
+                    <span className="text-[10px]">Preview</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        </motion.div>
 
         {/* AI PRICE PREDICTION */}
-        <div className="rounded-xl border border-border bg-card p-4">
+        <motion.div variants={fadeUp} className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
@@ -206,150 +297,124 @@ export default function SellModal({ open, onClose, onSuccess }) {
               </div>
 
               <p className="mt-1 text-xs text-muted-foreground">
-                Get an estimated fair market price based on your item's
+                Get an estimated fair market price based on your item&apos;s
                 category, condition and description.
               </p>
             </div>
 
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={handleSuggestPrice}
-              disabled={priceLoading}
-              className="shrink-0 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+              loading={priceLoading}
+              className="shrink-0"
             >
-              {priceLoading ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Analyzing...
-                </span>
-              ) : (
-                'Suggest Price'
-              )}
-            </button>
+              {priceLoading ? 'Analyzing...' : 'Suggest Price'}
+            </Button>
           </div>
 
-          {priceSuggestion && (
-            <div className="mt-4 rounded-lg border border-border bg-muted/40 p-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    Fair price
-                  </p>
-                  <p className="mt-1 text-lg font-bold text-primary">
-                    ₹{priceSuggestion.predicted_price?.toLocaleString()}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    Expected range
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    ₹{priceSuggestion.price_range?.low?.toLocaleString()}
-                    {' – '}
-                    ₹{priceSuggestion.price_range?.high?.toLocaleString()}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    Confidence
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">
-                    {Math.round(
-                      (priceSuggestion.confidence || 0) * 100
-                    )}
-                    %
-                  </p>
-                </div>
-              </div>
-
-              {priceSuggestion.market_insight && (
-                <p className="mt-3 text-xs text-muted-foreground">
-                  💡 {priceSuggestion.market_insight}
-                </p>
-              )}
-
-              {priceSuggestion.reasoning?.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  {priceSuggestion.reasoning.map((reason, index) => (
-                    <p
-                      key={index}
-                      className="text-xs text-muted-foreground"
-                    >
-                      • {reason}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={handleUseSuggestedPrice}
-                className="mt-4 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          <AnimatePresence>
+            {priceSuggestion && (
+              <motion.div
+                variants={feedbackPop}
+                initial="hidden"
+                animate="show"
+                exit="exit"
+                className="mt-4 rounded-lg border border-border bg-muted/40 p-4"
               >
-                Use Suggested Price
-              </button>
-            </div>
-          )}
-        </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Fair price
+                    </p>
+                    <p className="mt-1 text-lg font-bold text-primary tabular-nums">
+                      ₹{priceSuggestion.predicted_price?.toLocaleString()}
+                    </p>
+                  </div>
 
-        <Field label="Condition" htmlFor="condition">
-          <Select
-            id="condition"
-            name="condition"
-            value={formData.condition}
-            onChange={handleChange}
-          >
-            {CONDITIONS.map((c) => (
-              <option key={c.value} value={c.value}>
-                {c.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Expected range
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-foreground tabular-nums">
+                      ₹{priceSuggestion.price_range?.low?.toLocaleString()}
+                      {' – '}
+                      ₹{priceSuggestion.price_range?.high?.toLocaleString()}
+                    </p>
+                  </div>
 
-        <Field label="Image URL" htmlFor="imageUrl">
-          <Input
-            id="imageUrl"
-            name="imageUrl"
-            type="url"
-            placeholder="https://images.unsplash.com/..."
-            value={formData.imageUrl}
-            onChange={handleChange}
-          />
-        </Field>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Confidence
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-foreground tabular-nums">
+                      {Math.round(
+                        (priceSuggestion.confidence || 0) * 100
+                      )}
+                      %
+                    </p>
+                  </div>
+                </div>
 
-        <Field label="Description" htmlFor="description">
-          <Textarea
-            id="description"
-            name="description"
-            rows={4}
-            placeholder="Include details like age, usage, defects, or pick-up location..."
-            value={formData.description}
-            onChange={handleChange}
-            required
-          />
-        </Field>
+                {priceSuggestion.market_insight && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    💡 {priceSuggestion.market_insight}
+                  </p>
+                )}
 
-        <div className="flex justify-end gap-3 pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
-          >
+                {priceSuggestion.reasoning?.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {priceSuggestion.reasoning.map((reason, index) => (
+                      <p
+                        key={index}
+                        className="text-xs text-muted-foreground"
+                      >
+                        • {reason}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleUseSuggestedPrice}
+                  className="mt-4"
+                >
+                  Use Suggested Price
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* DESCRIPTION */}
+        <motion.div variants={fadeUp}>
+          <Field label="Description" htmlFor="description">
+            <Textarea
+              id="description"
+              name="description"
+              rows={4}
+              placeholder="Include details like age, usage, defects, or pick-up location..."
+              value={formData.description}
+              onChange={handleChange}
+              required
+            />
+          </Field>
+        </motion.div>
+
+        {/* SUBMIT */}
+        <motion.div variants={fadeUp} className="flex justify-end gap-3 pt-1">
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
-          </button>
+          </Button>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
+          <Button type="submit" loading={loading}>
             {loading ? 'Posting...' : 'List Item'}
-          </button>
-        </div>
-      </form>
+          </Button>
+        </motion.div>
+      </motion.form>
     </Modal>
   )
 }

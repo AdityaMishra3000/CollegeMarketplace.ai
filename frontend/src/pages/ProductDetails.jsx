@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
   ArrowLeft,
   MessageCircle,
@@ -26,6 +27,10 @@ import {
 
 import Badge from '../components/ui/Badge'
 import Avatar from '../components/ui/Avatar'
+import { Button } from '../components/ui/Button'
+import FraudBadge from '../components/ai/FraudBadge'
+import { fadeUp, staggerContainer } from '../lib/motion'
+import { usePointerTilt } from '../hooks/usePointerTilt'
 
 export default function ProductDetails() {
   const { id } = useParams()
@@ -44,6 +49,9 @@ export default function ProductDetails() {
 
   const [recommendationsError, setRecommendationsError] =
     useState(false)
+
+  // Shared "product media language" — same tilt/scale treatment as ProductCard.
+  const tiltRef = usePointerTilt({ max: 4, scale: 1.03 })
 
   useEffect(() => {
     if (!id || loading || !product) return
@@ -110,8 +118,8 @@ export default function ProductDetails() {
   }
 
   return (
-    <div className="space-y-10">
-      {/* Back Button */}
+    <div className="space-y-12 pb-20 sm:pb-0">
+      {/* Back */}
       <button
         onClick={() => navigate(-1)}
         className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -120,22 +128,45 @@ export default function ProductDetails() {
         Back to Marketplace
       </button>
 
-      {/* PRODUCT */}
-      <div className="grid gap-8 md:grid-cols-2">
-        {/* Image Gallery */}
-        <div className="aspect-square overflow-hidden rounded-xl border border-border bg-muted">
-          <img
-            src={
-              product.images?.[0] ||
-              'https://placehold.co/800x800/1a1a1a/e5e5e5?text=No+Image'
-            }
-            alt={product.title}
-            className="h-full w-full object-cover"
-          />
-        </div>
+      {/* PRODUCT — media is the hero */}
+      <div className="grid gap-8 md:grid-cols-[1.1fr_1fr] lg:gap-12">
+        {/* Media */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="relative aspect-square overflow-hidden rounded-2xl border border-border bg-muted md:sticky md:top-24"
+        >
+          <div
+            ref={tiltRef}
+            className="h-full w-full [transform-style:preserve-3d] transition-transform duration-300 ease-out"
+          >
+            <img
+              src={
+                product.images?.[0] ||
+                'https://placehold.co/800x800/1a1a1a/e5e5e5?text=No+Image'
+              }
+              alt={product.title}
+              className="h-full w-full object-cover"
+            />
+          </div>
 
-        {/* Product Info */}
-        <div className="flex flex-col space-y-6">
+          {product.isSold && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+              <Badge variant="destructive" className="text-sm">
+                Sold
+              </Badge>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Identity, price, trust, seller, action */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col space-y-6"
+        >
           <div>
             <div className="mb-3 flex flex-wrap gap-2">
               <Badge variant="outline">
@@ -145,25 +176,22 @@ export default function ProductDetails() {
               <Badge variant="secondary">
                 {conditionLabel(product.condition)}
               </Badge>
-
-              {product.isSold && (
-                <Badge variant="destructive">
-                  Sold
-                </Badge>
-              )}
             </div>
 
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground text-balance">
               {product.title}
             </h1>
 
-            <p className="mt-2 text-3xl font-semibold text-primary">
+            <p className="mt-2 text-3xl font-semibold text-primary tabular-nums">
               ₹{product.price?.toLocaleString()}
             </p>
           </div>
 
+          {/* AI trust signal, when available */}
+          <FraudBadge data={product.aiFraud} />
+
           <div className="prose prose-sm text-muted-foreground dark:prose-invert">
-            <p>{product.description}</p>
+            <p className="leading-relaxed">{product.description}</p>
           </div>
 
           {/* Seller Card */}
@@ -185,26 +213,44 @@ export default function ProductDetails() {
               </div>
             </div>
 
-            <button
+            <Button
               disabled={product.isSold}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+              className="hidden w-full sm:flex"
               onClick={() => {
                 window.location.href =
                   `mailto:${product.seller?.email}?subject=Interested in: ${product.title}`
               }}
             >
               <MessageCircle className="h-4 w-4" />
-
-              {product.isSold
-                ? 'Item Sold'
-                : 'Contact Seller'}
-            </button>
+              {product.isSold ? 'Item Sold' : 'Contact Seller'}
+            </Button>
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      {/* AI RECOMMENDATIONS */}
-      <section className="space-y-4">
+      {/* Sticky primary action on mobile */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 p-3 backdrop-blur-lg sm:hidden">
+        <Button
+          disabled={product.isSold}
+          className="w-full"
+          onClick={() => {
+            window.location.href =
+              `mailto:${product.seller?.email}?subject=Interested in: ${product.title}`
+          }}
+        >
+          <MessageCircle className="h-4 w-4" />
+          {product.isSold ? 'Item Sold' : 'Contact Seller'}
+        </Button>
+      </div>
+
+      {/* AI RECOMMENDATIONS — a continuation of discovery */}
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        className="space-y-4"
+      >
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-primary" />
 
@@ -229,11 +275,17 @@ export default function ProductDetails() {
         {!recommendationsLoading &&
           !recommendationsError &&
           recommendations.length > 0 && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <motion.div
+              variants={staggerContainer(0.06)}
+              initial="hidden"
+              animate="show"
+              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+            >
               {recommendations.map((item) => (
-                <button
+                <motion.button
                   key={item._id}
                   type="button"
+                  variants={fadeUp}
                   onClick={() =>
                     navigate(`/product/${item._id}`)
                   }
@@ -257,7 +309,7 @@ export default function ProductDetails() {
                         {item.title}
                       </h3>
 
-                      <span className="shrink-0 font-semibold text-primary">
+                      <span className="shrink-0 font-semibold text-primary tabular-nums">
                         ₹{item.price?.toLocaleString()}
                       </span>
                     </div>
@@ -287,9 +339,9 @@ export default function ProductDetails() {
                       </p>
                     )}
                   </div>
-                </button>
+                </motion.button>
               ))}
-            </div>
+            </motion.div>
           )}
 
         {!recommendationsLoading &&
@@ -309,7 +361,7 @@ export default function ProductDetails() {
             </p>
           </div>
         )}
-      </section>
+      </motion.section>
     </div>
   )
 }

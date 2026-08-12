@@ -201,3 +201,23 @@
     transform: translateX(100%);
   }
 }
+
+/* Full (non-compact) FraudBadge panel — colors are set inline by the
+   component based on risk level; this only supplies structural styling. */
+@layer components {
+  .fraud-panel {
+    border-radius: var(--radius-lg);
+    padding: 1rem;
+  }
+
+  .fraud-panel-header {
+    font-size: 0.875rem;
+    line-height: 1.4;
+  }
+
+  .fraud-recommendation {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+}
