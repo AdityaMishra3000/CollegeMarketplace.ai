@@ -29,7 +29,7 @@ import Badge from '../components/ui/Badge'
 import Avatar from '../components/ui/Avatar'
 import { Button } from '../components/ui/Button'
 import FraudBadge from '../components/ai/FraudBadge'
-import { fadeUp, staggerContainer } from '../lib/motion'
+import { fadeUp, staggerContainer, pressSpring } from '../lib/motion'
 import { usePointerTilt } from '../hooks/usePointerTilt'
 
 export default function ProductDetails() {
@@ -286,6 +286,8 @@ export default function ProductDetails() {
                   key={item._id}
                   type="button"
                   variants={fadeUp}
+                  whileTap={{ scale: 0.98 }}
+                  transition={pressSpring}
                   onClick={() =>
                     navigate(`/product/${item._id}`)
                   }

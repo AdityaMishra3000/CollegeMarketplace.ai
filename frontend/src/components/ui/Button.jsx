@@ -1,5 +1,7 @@
 import React from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "../../lib/utils";
+import { pressSpring } from "../../lib/motion";
 
 /**
  * Minimal Slot: lets <Button asChild> render its single child element
@@ -17,7 +19,11 @@ const Slot = React.forwardRef(function Slot({ children, className, ...props }, r
 });
 
 const baseStyles =
-  "relative inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium tracking-tight transition-[background-color,border-color,color,box-shadow,transform] duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0";
+  "relative inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium tracking-tight transition-[background-color,border-color,color,box-shadow] duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring/55 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0";
+
+// Fallback press feedback for the asChild/Slot path (e.g. <Button asChild><Link/></Button>),
+// which renders the child directly and can't be wrapped in motion.button.
+const slotPressStyles = "active:translate-y-px";
 
 const variants = {
   primary:
@@ -53,22 +59,28 @@ export const Button = React.forwardRef(function Button(
   ref
 ) {
   const classes = cn(baseStyles, variants[variant], sizes[size], className);
+  const reduceMotion = useReducedMotion();
+  const isInert = disabled || loading;
 
   // asChild renders the child element (e.g. a <Link>) with merged styling.
+  // No framer wrapper here — keep the same tiny press feedback via CSS.
   if (asChild) {
     return (
-      <Slot ref={ref} className={classes} {...props}>
+      <Slot ref={ref} className={cn(classes, slotPressStyles)} {...props}>
         {children}
       </Slot>
     );
   }
 
   return (
-    <button
+    <motion.button
       ref={ref}
       className={classes}
-      disabled={disabled || loading}
+      disabled={isInert}
       data-loading={loading || undefined}
+      whileHover={!reduceMotion && !isInert ? { y: -1 } : undefined}
+      whileTap={!reduceMotion && !isInert ? { y: 0, scale: 0.965 } : undefined}
+      transition={pressSpring}
       {...props}
     >
       {loading && (
@@ -78,7 +90,7 @@ export const Button = React.forwardRef(function Button(
         />
       )}
       {children}
-    </button>
+    </motion.button>
   );
 });
 

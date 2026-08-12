@@ -17,7 +17,14 @@ export default function ProductCard({ product }) {
   const tiltRef = usePointerTilt({ max: 5, scale: 1.045 })
 
   return (
-    <motion.div variants={fadeUp} layout="position" className="h-full">
+    <motion.div
+      layout
+      variants={fadeUp}
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      className="h-full"
+    >
       <Card interactive className="group flex h-full flex-col overflow-hidden">
         <Link
           to={`/product/${product._id}`}

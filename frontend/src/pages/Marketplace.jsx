@@ -9,7 +9,7 @@ import { Input, Select } from '../components/ui/Input'
 import { EmptyState, ErrorState, Skeleton } from '../components/ui/States'
 import { Button } from '../components/ui/Button'
 import ProductCard from '../components/marketplace/ProductCard'
-import { staggerContainer } from '../lib/motion'
+import { cn } from '../lib/utils'
 
 function ProductCardSkeleton() {
   return (
@@ -91,6 +91,11 @@ export default function Marketplace() {
   ].filter(Boolean)
 
   const resultCount = data?.products?.length ?? null
+  const products = data?.products || []
+  // Only the very first fetch shows the skeleton — a filter/search change
+  // that refetches keeps the current grid in place (see below) instead of
+  // tearing it down, so results feel like they move, not reload.
+  const isInitialLoading = loading && !data
 
   return (
     <div className="space-y-8">
@@ -181,46 +186,72 @@ export default function Marketplace() {
         </AnimatePresence>
       </div>
 
-      {/* RESULTS */}
+      {/* RESULTS — the grid itself doesn't remount when filters change; only
+          the cards that entered/left animate, and survivors reposition in
+          place, so refining a search never feels like a page reload. */}
       <div className="min-h-[50vh]">
-        {loading ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <ProductCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : error ? (
-          <ErrorState
-            title="Failed to load products"
-            description={error}
-            onRetry={refetch}
-          />
-        ) : !data?.products?.length ? (
-          <EmptyState
-            icon={Filter}
-            title="No products found"
-            description="Try adjusting your filters or search query to find what you're looking for."
-            action={
-              <Button variant="secondary" size="sm" onClick={clearAll}>
-                Clear all filters
-              </Button>
-            }
-          />
-        ) : (
-          <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="wait" initial={false}>
+          {isInitialLoading ? (
             <motion.div
-              key={`${filters.search}-${filters.category}-${filters.condition}`}
-              variants={staggerContainer(0.05)}
-              initial="hidden"
-              animate="show"
+              key="skeleton"
+              exit={{ opacity: 0, transition: { duration: 0.15 } }}
               className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             >
-              {data.products.map(product => (
-                <ProductCard key={product._id} product={product} />
+              {Array.from({ length: 8 }).map((_, i) => (
+                <ProductCardSkeleton key={i} />
               ))}
             </motion.div>
-          </AnimatePresence>
-        )}
+          ) : error ? (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+            >
+              <ErrorState
+                title="Failed to load products"
+                description={error}
+                onRetry={refetch}
+              />
+            </motion.div>
+          ) : !products.length ? (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+            >
+              <EmptyState
+                icon={Filter}
+                title="No products found"
+                description="Try adjusting your filters or search query to find what you're looking for."
+                action={
+                  <Button variant="secondary" size="sm" onClick={clearAll}>
+                    Clear all filters
+                  </Button>
+                }
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="results"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              layout
+              className={cn(
+                'grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 transition-opacity duration-200',
+                loading && 'opacity-60'
+              )}
+            >
+              <AnimatePresence mode="popLayout" initial={false}>
+                {products.map(product => (
+                  <ProductCard key={product._id} product={product} />
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )
