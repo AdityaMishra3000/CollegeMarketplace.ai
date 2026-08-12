@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Navbar } from './components/layout/Navbar'
 import CommandPalette from './components/layout/CommandPalette'
+import AmbientField from './components/layout/AmbientField'
 import SellModal from './components/marketplace/SellModal'
 import { useAuth } from './context/AuthContext'
 
@@ -37,7 +38,9 @@ export default function App() {
   const [sellModalOpen, setSellModalOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
+    <div className="min-h-screen text-foreground selection:bg-primary/30">
+      <AmbientField />
+
       <Navbar 
         onOpenCommand={() => setCommandOpen(true)} 
         onOpenSell={() => setSellModalOpen(true)} 
