@@ -2,7 +2,7 @@
 @import "tailwindcss";
 
 /* Class-based dark mode driven by ThemeContext (adds `.dark` on <html>) */
-@custom-variant dark (&:where(.dark, .dark *));
+/* Removed @custom-variant as it is not a standard CSS rule */
 
 /*
   Design tokens.
