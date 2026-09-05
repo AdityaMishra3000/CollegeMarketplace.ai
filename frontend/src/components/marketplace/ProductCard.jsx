@@ -4,11 +4,9 @@ import Badge from '../ui/Badge'
 import Avatar from '../ui/Avatar'
 import FraudBadge from '../ai/FraudBadge'
 import { categoryLabel, conditionLabel } from '../../lib/constants'
+import { formatPrice } from '../../lib/utils'
 
 export default function ProductCard({ product }) {
-  const price =
-    typeof product.price === 'number' ? product.price.toFixed(2) : product.price
-
   return (
     <Card interactive className="group flex h-full flex-col overflow-hidden">
       <Link
@@ -29,8 +27,8 @@ export default function ProductCard({ product }) {
         )}
 
         {/* Price chip floating on the image */}
-        <span className="absolute right-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-sm font-semibold text-foreground shadow-sm ring-1 ring-border backdrop-blur">
-          ₹{price}
+        <span className="absolute right-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-sm font-semibold tabular-nums text-foreground shadow-sm ring-1 ring-border backdrop-blur">
+          {formatPrice(product.price)}
         </span>
       </Link>
 

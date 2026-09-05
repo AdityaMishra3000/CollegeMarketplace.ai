@@ -1,49 +1,62 @@
 import API from './client'
 
-// -- PUBLIC ROUTES --
+/** Page size used by the marketplace grid and the admin table. */
+export const PAGE_SIZE = 24
 
-export const getProducts = async (filters = {}) => {
-  // We use URLSearchParams to cleanly build the query string (e.g., ?search=laptop&category=electronics)
+function listParams({ page = 1, limit = PAGE_SIZE, ...filters } = {}) {
   const params = new URLSearchParams()
-  
-  if (filters.search) params.append('search', filters.search)
-  if (filters.category && filters.category !== 'all') params.append('category', filters.category)
-  if (filters.condition && filters.condition !== 'all') params.append('condition', filters.condition)
+  params.set('page', String(page))
+  params.set('limit', String(limit))
 
-  return API.get(`/products?${params.toString()}`)
+  if (filters.search) params.set('search', filters.search)
+  // `all` is the API's documented "no filter" sentinel.
+  if (filters.category && filters.category !== 'all') params.set('category', filters.category)
+  if (filters.condition && filters.condition !== 'all') params.set('condition', filters.condition)
+  if (filters.minPrice) params.set('minPrice', String(filters.minPrice))
+  if (filters.maxPrice) params.set('maxPrice', String(filters.maxPrice))
+  if (filters.sort) params.set('sort', filters.sort)
+  if (filters.flagged) params.set('flagged', 'true')
+
+  return params
 }
 
-export const getProductById = async (id) => {
-  return API.get(`/products/${id}`)
-}
+/** Normalize the API's `{ products, pagination }` envelope for usePaginatedList. */
+const toPage = (response) => ({
+  items: response?.products ?? [],
+  pagination: response?.pagination ?? null,
+})
 
+// -- PUBLIC --
 
-// -- PROTECTED USER ROUTES (Requires JWT) --
+export const getProducts = async (options) =>
+  toPage(await API.get(`/products?${listParams(options)}`))
 
-export const createProduct = async (productData) => {
-  return API.post('/products', productData)
-}
+export const getProductById = (id) => API.get(`/products/${id}`)
 
-export const getUserProducts = async () => {
-  return API.get('/products/me')
-}
+export const getSellerProducts = async (userId, options) =>
+  toPage(await API.get(`/users/${userId}/products?${listParams(options)}`))
 
-export const sellOne = async (id) => {
-  // Using PATCH because we are just updating the 'isSold' status, not replacing the whole object
-  return API.patch(`/products/${id}/sell`)
-}
+// -- AUTHENTICATED --
 
-export const deleteProduct = async (id) => {
-  return API.delete(`/products/${id}`)
-}
+export const createProduct = (productData) => API.post('/products', productData)
 
+export const updateProduct = (id, productData) => API.put(`/products/${id}`, productData)
 
-// -- ADMIN ROUTES --
+export const getUserProducts = async (options) =>
+  toPage(await API.get(`/products/me?${listParams(options)}`))
 
-export const getStats = async () => {
-  return API.get('/admin/stats')
-}
+export const sellOne = (id) => API.patch(`/products/${id}/sell`)
 
-export const getAdminDashboard = async () => {
-  return API.get('/admin/products')
-}
+export const deleteProduct = (id) => API.delete(`/products/${id}`)
+
+// -- ADMIN --
+
+export const getStats = () => API.get('/admin/stats')
+
+export const getAdminProducts = async (options) =>
+  toPage(await API.get(`/admin/products?${listParams(options)}`))
+
+/** Analyze every listing that has no fraud verdict yet, in one batched request. */
+export const backfillFraud = () => API.post('/admin/fraud/backfill')
+
+export const reanalyzeProduct = (id) => API.post(`/admin/products/${id}/reanalyze`)

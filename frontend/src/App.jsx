@@ -4,6 +4,7 @@ import { Navbar } from './components/layout/Navbar'
 import CommandPalette from './components/layout/CommandPalette'
 import SellModal from './components/marketplace/SellModal'
 import { useAuth } from './context/AuthContext'
+import { ListingsProvider, useListings } from './context/ListingsContext'
 
 // Pages
 import Marketplace from './pages/Marketplace'
@@ -33,8 +34,17 @@ function ProtectedRoute({ children, requireAdmin = false }) {
 }
 
 export default function App() {
+  return (
+    <ListingsProvider>
+      <AppShell />
+    </ListingsProvider>
+  )
+}
+
+function AppShell() {
   const [commandOpen, setCommandOpen] = useState(false)
   const [sellModalOpen, setSellModalOpen] = useState(false)
+  const { refreshListings } = useListings()
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
@@ -87,14 +97,11 @@ export default function App() {
         </Routes>
       </main>
 
-      <SellModal 
-        open={sellModalOpen} 
-        onClose={() => setSellModalOpen(false)} 
-        onSuccess={() => {
-          if (window.location.pathname === '/dashboard' || window.location.pathname === '/marketplace') {
-            window.location.reload()
-          }
-        }}
+      <SellModal
+        open={sellModalOpen}
+        onClose={() => setSellModalOpen(false)}
+        // Re-runs the listing queries in place instead of reloading the page.
+        onSuccess={refreshListings}
       />
     </div>
   )

@@ -10,7 +10,6 @@ import {
   Moon,
   LayoutDashboard,
   Store,
-  User as UserIcon,
   LogOut,
   Shield,
   Command,
@@ -163,9 +162,6 @@ export function Navbar({ onOpenCommand, onOpenSell }) {
                           </div>
                         </div>
                         <div className="pt-1.5">
-                          <MenuItem to="/profile" icon={UserIcon} onClick={() => setMenuOpen(false)}>
-                            Profile
-                          </MenuItem>
                           <MenuItem to="/dashboard" icon={LayoutDashboard} onClick={() => setMenuOpen(false)}>
                             Dashboard
                           </MenuItem>
@@ -258,14 +254,6 @@ export function Navbar({ onOpenCommand, onOpenSell }) {
               ))}
               {user ? (
                 <>
-                  <Link
-                    to="/profile"
-                    onClick={() => setMobileOpen(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                  >
-                    <UserIcon className="h-4 w-4" />
-                    Profile
-                  </Link>
                   {user.role === "admin" && (
                     <Link
                       to="/admin"

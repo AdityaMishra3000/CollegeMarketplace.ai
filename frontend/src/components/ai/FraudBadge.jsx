@@ -1,100 +1,113 @@
-const CONFIG = {
+import { ShieldCheck, ShieldAlert, ShieldX, Shield, HelpCircle } from 'lucide-react'
+import { cn } from '../../lib/utils'
+
+/**
+ * The one fraud badge.
+ *
+ * There used to be two: this one, plus components/admin/FraudBadge.jsx, which
+ * nothing imported and which used different thresholds (>70 / >30) than the ML
+ * service's bands. The admin table also inlined a third copy of the config. All
+ * of it now comes from here, keyed by the risk level the backend sends rather
+ * than by a score the UI re-buckets itself.
+ *
+ * Colours use the design tokens so the badge works in both themes; it previously
+ * hardcoded light-mode hex values.
+ */
+const LEVELS = {
   LOW: {
-    emoji: '✅',
+    icon: ShieldCheck,
     label: 'Safe',
-    bg: '#d1fae5',
-    color: '#065f46',
+    className: 'border-success/25 bg-success/10 text-success',
   },
   MEDIUM: {
-    emoji: '⚠️',
+    icon: Shield,
     label: 'Caution',
-    bg: '#fef3c7',
-    color: '#92400e',
+    className: 'border-warning/30 bg-warning/10 text-warning',
   },
   HIGH: {
-    emoji: '🚨',
+    icon: ShieldAlert,
     label: 'High Risk',
-    bg: '#fee2e2',
-    color: '#991b1b',
+    className: 'border-destructive/30 bg-destructive/10 text-destructive',
   },
   VERY_HIGH: {
-    emoji: '🛑',
+    icon: ShieldX,
     label: 'Danger',
-    bg: '#fca5a5',
-    color: '#7f1d1d',
+    className: 'border-destructive/50 bg-destructive/20 text-destructive',
   },
 }
 
-export default function FraudBadge({ data, compact = false }) {
-  // No data means the product hasn't been analyzed yet.
-  // Do NOT make another ML request here.
-  if (!data || !data.risk_level) {
-    return null
+const UNKNOWN = {
+  icon: HelpCircle,
+  label: 'Not analyzed',
+  className: 'border-border bg-muted text-muted-foreground',
+}
+
+export function riskConfig(riskLevel) {
+  return LEVELS[riskLevel] || UNKNOWN
+}
+
+export default function FraudBadge({ data, compact = false, showPending = false, className }) {
+  // `data` is the cached verdict that arrives with the product. A missing verdict
+  // means "not analyzed yet" — never a reason to issue another ML request from
+  // the browser.
+  if (!data?.risk_level) {
+    if (!showPending) return null
+    const { icon: Icon } = UNKNOWN
+    return (
+      <span
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
+          UNKNOWN.className,
+          className
+        )}
+      >
+        <Icon className="h-3.5 w-3.5" />
+        {UNKNOWN.label}
+      </span>
+    )
   }
 
-  const config =
-    CONFIG[data.risk_level] || {
-      emoji: '❓',
-      label: 'Unknown',
-      bg: '#f3f4f6',
-      color: '#374151',
-    }
+  const config = riskConfig(data.risk_level)
+  const Icon = config.icon
+  const score = data.risk_score ?? 0
 
   if (compact) {
     return (
       <span
-        className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold"
-        style={{
-          backgroundColor: config.bg,
-          color: config.color,
-        }}
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold',
+          config.className,
+          className
+        )}
         title={data.recommendation || 'AI safety analysis'}
       >
-        {config.emoji} {config.label} ({data.risk_score ?? 0}/100)
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        {config.label}
+        <span className="tabular-nums font-medium opacity-80">{score}/100</span>
       </span>
     )
   }
 
   return (
-    <div
-      className="fraud-panel"
-      style={{
-        background: config.bg,
-        borderLeft: `4px solid ${config.color}`,
-      }}
-    >
-      <div className="fraud-panel-header">
-        <span
-          style={{
-            color: config.color,
-            fontWeight: 700,
-          }}
-        >
-          {config.emoji} {config.label} — Score {data.risk_score ?? 0}/100
-        </span>
+    <div className={cn('rounded-xl border p-4', config.className, className)}>
+      <div className="flex items-center gap-2 font-semibold">
+        <Icon className="h-4 w-4 shrink-0" />
+        {config.label}
+        <span className="tabular-nums font-medium opacity-80">— score {score}/100</span>
       </div>
 
       {data.recommendation && (
-        <p
-          className="fraud-recommendation"
-          style={{ color: config.color }}
-        >
-          {data.recommendation}
-        </p>
+        <p className="mt-1.5 text-sm opacity-90">{data.recommendation}</p>
       )}
 
       {data.flags?.length > 0 && (
-        <div className="mt-2 space-y-1">
+        <ul className="mt-2 space-y-1">
           {data.flags.map((flag, index) => (
-            <p
-              key={`${flag.type || 'flag'}-${index}`}
-              className="text-xs"
-              style={{ color: config.color }}
-            >
+            <li key={`${flag.type || 'flag'}-${index}`} className="text-xs opacity-90">
               • {flag.message}
-            </p>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   )

@@ -1,20 +1,24 @@
-import { CheckCircle2, Trash2, Package, Tag, DollarSign } from 'lucide-react'
+import { CheckCircle2, Trash2, Package, Tag, IndianRupee, Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useApi } from '../hooks/useApi'
+import { usePaginatedList } from '../hooks/usePaginatedList'
+import { useListings } from '../context/ListingsContext'
 import { getUserProducts, sellOne, deleteProduct } from '../api/products'
 import { categoryLabel, conditionLabel } from '../lib/constants'
+import { formatPrice } from '../lib/utils'
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
 import { Spinner, ErrorState, EmptyState } from '../components/ui/States'
 import { useToast } from '../components/ui/Toast'
+import FraudBadge from '../components/ai/FraudBadge'
 
 export default function Dashboard() {
   const { user } = useAuth()
   const { toast } = useToast()
+  const { version } = useListings()
 
-  const { data, loading, error, refetch } = useApi(() => getUserProducts())
+  const { items: products, loading, loadingMore, error, hasMore, total, loadMore, refresh } =
+    usePaginatedList((page) => getUserProducts({ page, limit: 24 }), [version])
 
-  const products = data?.products || []
   const activeProducts = products.filter((p) => !p.isSold)
   const soldProducts = products.filter((p) => p.isSold)
   const totalEarnings = soldProducts.reduce((acc, p) => acc + (p.price || 0), 0)
@@ -23,9 +27,9 @@ export default function Dashboard() {
     try {
       await sellOne(id)
       toast('Item marked as sold!', { type: 'success' })
-      refetch()
+      refresh()
     } catch (err) {
-      toast('Failed to update status', { type: 'error' })
+      toast(err?.response?.data?.message || 'Failed to update status', { type: 'error' })
     }
   }
 
@@ -34,63 +38,48 @@ export default function Dashboard() {
     try {
       await deleteProduct(id)
       toast('Listing deleted', { type: 'info' })
-      refetch()
+      refresh()
     } catch (err) {
-      toast('Failed to delete listing', { type: 'error' })
+      toast(err?.response?.data?.message || 'Failed to delete listing', { type: 'error' })
     }
   }
 
   return (
     <div className="space-y-8">
-      {/* User Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Welcome, {user?.name}</h1>
-        <p className="text-sm text-muted-foreground">{user?.email} • {user?.course || 'Student'}</p>
+        <p className="text-sm text-muted-foreground">
+          {user?.email} • {user?.course || 'Student'}
+        </p>
       </div>
 
-      {/* Analytics Summary */}
+      {/* Counts describe the listings loaded so far; `total` is the full figure. */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Listings</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeProducts.length}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Items Sold</CardTitle>
-            <Tag className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{soldProducts.length}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Sales Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${totalEarnings.toFixed(2)}</div>
-          </CardContent>
-        </Card>
+        <SummaryCard label="Active Listings" icon={Package} value={activeProducts.length} />
+        <SummaryCard label="Items Sold" icon={Tag} value={soldProducts.length} />
+        <SummaryCard
+          label="Total Sales Value"
+          icon={IndianRupee}
+          value={formatPrice(totalEarnings)}
+        />
       </div>
 
-      {/* Listings Management */}
       <div className="space-y-4">
-        <h2 className="text-xl font-bold tracking-tight">Your Listings</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold tracking-tight">Your Listings</h2>
+          {total > 0 && (
+            <span className="text-sm text-muted-foreground">
+              {products.length} of {total}
+            </span>
+          )}
+        </div>
 
         {loading ? (
           <div className="flex h-40 items-center justify-center">
             <Spinner className="h-8 w-8 text-primary" />
           </div>
         ) : error ? (
-          <ErrorState title="Failed to load dashboard" description={error} onRetry={refetch} />
+          <ErrorState title="Failed to load dashboard" description={error} onRetry={refresh} />
         ) : products.length === 0 ? (
           <EmptyState
             icon={Package}
@@ -98,57 +87,91 @@ export default function Dashboard() {
             description="You haven't posted any items for sale. Click 'Sell' in the navbar to create your first listing."
           />
         ) : (
-          <div className="divide-y divide-border rounded-xl border border-border bg-card">
-            {products.map((item) => (
-              <div key={item._id} className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-4">
-                  <img
-                    src={item.images?.[0] || 'https://placehold.co/100x100?text=No+Image'}
-                    alt={item.title}
-                    className="h-16 w-16 rounded-lg object-cover bg-muted shrink-0"
-                  />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-foreground">{item.title}</h3>
-                      {item.isSold ? (
-                        <Badge variant="secondary">Sold</Badge>
-                      ) : (
-                        <Badge variant="outline">Active</Badge>
-                      )}
+          <>
+            <div className="divide-y divide-border rounded-xl border border-border bg-card">
+              {products.map((item) => (
+                <div
+                  key={item._id}
+                  className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={item.images?.[0] || 'https://placehold.co/100x100?text=No+Image'}
+                      alt={item.title}
+                      className="h-16 w-16 shrink-0 rounded-lg bg-muted object-cover"
+                    />
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-semibold text-foreground">{item.title}</h3>
+                        {item.isSold ? (
+                          <Badge variant="secondary">Sold</Badge>
+                        ) : (
+                          <Badge variant="outline">Active</Badge>
+                        )}
+                        <FraudBadge data={item.aiFraud} compact />
+                      </div>
+                      <p className="text-sm font-medium text-primary tabular-nums">
+                        {formatPrice(item.price)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {categoryLabel(item.category)} • {conditionLabel(item.condition)}
+                      </p>
                     </div>
-                    <p className="text-sm font-medium text-primary">${item.price?.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {categoryLabel(item.category)} • {conditionLabel(item.condition)}
-                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-center">
+                    {!item.isSold && (
+                      <button
+                        onClick={() => handleMarkAsSold(item._id)}
+                        className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                        title="Mark as Sold"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Mark Sold
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDelete(item._id)}
+                      className="flex items-center gap-1.5 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20"
+                      title="Delete Listing"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </button>
                   </div>
                 </div>
+              ))}
+            </div>
 
-                {/* Management Action Buttons */}
-                <div className="flex items-center gap-2 self-end sm:self-center">
-                  {!item.isSold && (
-                    <button
-                      onClick={() => handleMarkAsSold(item._id)}
-                      className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
-                      title="Mark as Sold"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Mark Sold
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDelete(item._id)}
-                    className="flex items-center gap-1.5 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors"
-                    title="Delete Listing"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Delete
-                  </button>
-                </div>
+            {hasMore && (
+              <div className="flex justify-center">
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-60"
+                >
+                  {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {loadingMore ? 'Loading…' : `Load more (${total - products.length} left)`}
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>
+  )
+}
+
+function SummaryCard({ label, icon: Icon, value }) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold tabular-nums">{value}</div>
+      </CardContent>
+    </Card>
   )
 }

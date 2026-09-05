@@ -1,18 +1,26 @@
-
-
 services:
-
   # ── MongoDB ────────────────────────────────────────────────────
   mongo:
     image: mongo:6
     container_name: college_mongo
     restart: unless-stopped
+    # Bound to the loopback interface, not 0.0.0.0. This used to publish an
+    # unauthenticated database on every interface of the host. Application
+    # containers reach it over `marketplace_net` and need no published port at
+    # all; the mapping is kept only so local tools (mongosh, Compass, the test
+    # suite) still work.
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongo_data:/data/db
     networks:
       - marketplace_net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   # ── Python ML Microservice ─────────────────────────────────────
   ml-service:
@@ -21,15 +29,24 @@ services:
       dockerfile: Dockerfile
     container_name: college_ml
     restart: unless-stopped
+    # Loopback only: the service has no authentication, and only the backend
+    # calls it. Kept published for local curl testing.
     ports:
-      - "5001:5001"
+      - "127.0.0.1:5001:5001"
     networks:
       - marketplace_net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      # python:3.11-slim ships without curl, so the previous curl-based check
+      # could never pass and the container reported unhealthy forever.
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5001/health', timeout=3).status == 200 else 1)
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
+      start_period: 10s
 
   # ── Node.js Backend ────────────────────────────────────────────
   backend:
@@ -38,6 +55,9 @@ services:
       dockerfile: Dockerfile
     container_name: college_backend
     restart: unless-stopped
+    # JWT_SECRET lives only in backend/.env (gitignored). It used to be set here
+    # as a literal — and because `environment:` overrides `env_file:`, that
+    # committed value silently won over whatever was in .env.
     env_file: ./backend/.env
     ports:
       - "5000:5000"
@@ -45,33 +65,59 @@ services:
       - NODE_ENV=production
       - PORT=5000
       - MONGODB_URI=mongodb://mongo:27017/college_marketplace
-      - JWT_SECRET=college_marketplace_aiml_secret_2024
       - ML_SERVICE_URL=http://ml-service:5001
+      # Explicit browser-origin allowlist — never `*`.
+      #
+      # The SPA normally reaches the API same-origin through the /api proxy, but
+      # browsers still send `Origin` on POST/PUT/DELETE (and the proxy forwards
+      # it), so the hostname the site is served from must be listed here.
+      #
+      # `marketplace.io` is mapped to 127.0.0.1 in /etc/hosts for this deployment.
+      # Override for another deployment without editing this file:
+      #   CORS_ORIGINS=https://example.edu docker compose up -d
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://marketplace.io,http://marketplace.io:5173,http://localhost,http://localhost:5173}
     depends_on:
-      - mongo
-      - ml-service
+      mongo:
+        condition: service_started
+      ml-service:
+        condition: service_started
     networks:
       - marketplace_net
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - require('http').get('http://127.0.0.1:5000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
-  # ── Frontend (Nginx static server) ────────────────────────────
+  # ── Frontend ───────────────────────────────────────────────────
+  # NOTE: this runs the Vite dev server, not a production build. See the README
+  # "Deployment" section — building the static bundle and serving it through the
+  # nginx.conf in this repo is a separate, still-outstanding change.
   frontend:
     image: node:22-alpine
     container_name: college_frontend
     restart: unless-stopped
     working_dir: /app
-
     ports:
       - "80:5173"
-
     volumes:
       - ./frontend:/app
       - /app/node_modules
-
+    environment:
+      # Same-origin: the dev server proxies /api to the backend (vite.config.js),
+      # so the app works whether it is opened as http://localhost or
+      # http://marketplace.io. An absolute URL here is what made every request
+      # cross-origin and tripped the CORS allowlist.
+      - VITE_API_BASE_URL=/api
+      - VITE_DEV_API_PROXY=http://backend:5000
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
-
     depends_on:
       - backend
-
     networks:
       - marketplace_net
 

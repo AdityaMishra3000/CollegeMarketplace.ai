@@ -1,287 +1,309 @@
 # 🎓 College Marketplace — AI/ML Enhanced Edition
 
-> A student buy-and-sell platform upgraded with **Price Prediction**, **Recommendation System**, and **Fraud Detection** powered by a dedicated Python ML microservice.
+A student buy-and-sell platform with **price prediction**, **content-based recommendations** and
+**fraud detection**, served by a dedicated Python ML microservice.
 
 ---
 
-## 🏗️ Project Architecture
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│               COLLEGE MARKETPLACE               │
-│                                                 │
-│  ┌──────────────┐    ┌──────────────────────┐   │
-│  │   Frontend   │───▶│   Node.js Backend    │   │
-│  │  HTML/JS/CSS │    │   Express  Port 5000 │   │
-│  │  Port 3000   │    └────────┬─────────────    │
-│  └──────────────┘             │                 │
-│                         ┌─────▼──────────────┐  │
-│                         │  Python ML Service │  │
-│                         │   Flask  Port 5001 │  │
-│                         └─────────┬──────────┘  │
-│                                   │             │
-│                         ┌─────────▼──────────┐  │
-│                         │      MongoDB       │  │
-│                         │     Port 27017     │  │
-│                         └────────────────────┘  │
-└─────────────────────────────────────────────────┘
+┌──────────────────┐        ┌─────────────────────────┐
+│  Frontend        │───────▶│  Node.js / Express API  │
+│  React 19 + Vite │  REST  │  port 5000              │
+│  port 5173 (80)  │        └───────┬─────────────────┘
+└──────────────────┘                │
+                        ┌───────────┴──────────┐
+                        ▼                      ▼
+             ┌────────────────────┐  ┌────────────────────┐
+             │ Python ML service  │  │      MongoDB       │
+             │ Flask  port 5001   │  │   port 27017       │
+             │ (internal only)    │  │  (internal only)   │
+             └────────────────────┘  └────────────────────┘
 ```
 
----
+The backend is the only component that talks to MongoDB or to the ML service. Both of those are
+bound to loopback and are not reachable from outside the host.
 
-## 🤖 AI/ML Features
-
-### 1. 💰 Price Prediction
-**How it works:**
-- Seller fills in Title, Category, and Condition in the listing form
-- Clicks **"🤖 Get AI Price Suggestion"**
-- ML service returns a predicted fair price + low/high range + confidence score
-- Seller can click **"✅ Use This Price"** to auto-fill the form
-
-**Technical approach:**
-- Rule-based + keyword multiplier engine (production-ready to swap with trained ML model)
-- Factors used: category base price, condition, title/description keywords (e.g. "MacBook" → price boost, "damaged" → price reduction)
-- Returns confidence score based on number of matching signals
-- Market insight tip per category
-
-**API:** `POST /api/ai/predict-price`
-```json
-Request:  { "title": "MacBook Air M1", "description": "...", "category": "electronics", "condition": "good" }
-Response: { "predicted_price": 52000, "price_range": { "low": 41600, "high": 62400 }, "confidence": 0.85, "reasoning": [...], "market_insight": "..." }
-```
-
----
-
-### 2. 🎯 Recommendation System
-**How it works:**
-- When a buyer opens any product detail, the system automatically fetches similar products
-- Shows a **"Similar Items You Might Like"** horizontal scrollable strip below the product
-- Considers the user's interest/view history to personalize results
-
-**Technical approach:**
-- Content-based filtering using a custom similarity function
-- Similarity score = weighted sum of: category match (40%), condition proximity (20%), price range similarity (20%), title/description keyword Jaccard overlap (20%)
-- Bonus boosts for: items the user previously showed interest in, recently listed items
-- Returns top 6 recommendations sorted by score
-
-**API:** `GET /api/ai/recommendations/:productId`
-```json
-Response: { "recommendations": [ { ...product, "recommendation_score": 0.73 }, ... ], "count": 6 }
-```
-
----
-
-### 3. 🚨 Fraud Detection
-**How it works:**
-- Every product listing is automatically scanned when opened
-- A risk badge appears: ✅ Safe / ⚠️ Caution / 🚨 High Risk / 🛑 Danger
-- For new listings being created, fraud check runs on the form data before submission
-- Products flagged VERY_HIGH are auto-marked `isFlagged: true` in the database
-
-**Technical approach:**
-Risk score 0–100 computed from:
-
-| Check | Weight | What it detects |
-|---|---|---|
-| Price anomaly | +30 | Price < 15% of market base = likely scam |
-| Scam phrases | +15/flag | "WhatsApp only", "advance payment", "no return", etc. |
-| Phone in description | +20 | Trying to move contact off-platform |
-| Very short description | +10 | Lazy/fake listing |
-| Excessive CAPS | +10 | Common in spam |
-| New account (< 3 days) | +15 | New account fraud pattern |
-| Seller with reports | +25 | History of complaints |
-
-**Risk Levels:**
-- 0–25: ✅ LOW — Safe to proceed
-- 26–50: ⚠️ MEDIUM — Verify item before paying
-- 51–75: 🚨 HIGH — Meet on campus, inspect first
-- 76–100: 🛑 VERY HIGH — Do not proceed, report listing
-
-**API:** `POST /api/ai/fraud-check` or `GET /api/ai/fraud-check/:productId`
-
----
-
-### 4. 📊 AI Market Insights
-**How it works:**
-- Sidebar button "🤖 AI Market Insights" expands a live panel
-- Shows trending categories, average prices, total active listings
-
-**API:** `GET /api/ai/insights`
-
----
-
-## 📁 Project Structure
+### Repository layout
 
 ```
 AI_MARKETPLACE/
 ├── backend/
-│   ├── server.js           # Express API + all AI routes
-│   ├── package.json
-│   ├── .env
-│   └── Dockerfile
+│   ├── server.js                 # bootstrap only: config → db → listen
+│   ├── src/
+│   │   ├── app.js                # express assembly (middleware, routes, errors)
+│   │   ├── config/
+│   │   │   ├── env.js            # validated configuration, fails fast
+│   │   │   ├── db.js             # mongoose connection
+│   │   │   ├── taxonomy.js       # ← CANONICAL CATEGORIES & CONDITIONS
+│   │   │   └── cloudinary.js     # upload storage (optional)
+│   │   ├── models/               # User, Product (+ schema enums and indexes)
+│   │   ├── middleware/           # auth, rate limits, validation, error handler
+│   │   ├── services/
+│   │   │   ├── mlClient.js       # ← THE ONLY MODULE THAT KNOWS THE ML PROTOCOL
+│   │   │   ├── fraudService.js   # analyze / cache / bulk backfill
+│   │   │   └── productService.js # queries, filters, pagination, aggregates
+│   │   ├── serializers/          # explicit response shapes (PII control)
+│   │   ├── routes/               # one file per resource
+│   │   └── utils/
+│   ├── scripts/                  # seed, taxonomy migration, indexes, fraud backfill
+│   └── tests/                    # jest + supertest, incl. the taxonomy contract test
 │
 ├── ml_service/
-│   ├── ml_server.py        # Flask ML microservice
-│   ├── requirements.txt    # flask, flask-cors, numpy
-│   └── Dockerfile
+│   ├── ml_server.py              # Flask; heuristics, to be replaced by trained models
+│   └── requirements.txt
 │
 ├── frontend/
-│   ├── index.html          # Main app (AI features integrated)
-│   ├── aiService.js        # 🆕 AI API calls + UI renderers
-│   ├── aiStyles.css        # 🆕 AI component styles
-│   ├── apiService.js       # Original API service
-│   ├── authAPI.js          # Auth manager
-│   ├── productsAPI.js      # Product manager
-│   ├── ui.js               # UI manager
-│   ├── styles.css          # Original styles
-│   └── animations.css      # Original animations
+│   └── src/
+│       ├── lib/taxonomy.js       # ← MIRROR of the backend taxonomy (asserted by tests)
+│       ├── api/                  # axios client + endpoint wrappers
+│       ├── hooks/                # usePaginatedList, useDebouncedValue, useApi
+│       ├── context/              # auth, theme, listings refresh
+│       ├── components/           # ui/, layout/, marketplace/, ai/
+│       └── pages/                # Marketplace, ProductDetails, Dashboard, Admin, auth
 │
-├── docker-compose.yml      # 🆕 One-command deployment
-├── nginx.conf              # 🆕 Frontend server config
-└── README.md               # This file
+├── docker-compose.yml
+├── nginx.conf                    # for the production frontend build (see Deployment)
+└── README.md
 ```
 
 ---
 
-## 🚀 Setup & Running
+## The data contract
 
-### Option A — Docker (Recommended, one command)
+Categories and conditions are declared **once**, in `backend/src/config/taxonomy.js`.
 
-```bash
-# 1. Make sure Docker Desktop is running
+| Categories | Conditions |
+|---|---|
+| `electronics`, `textbooks`, `furniture`, `appliances`, `clothing`, `sports`, `other` | `new`, `like_new`, `good`, `fair`, `poor` |
 
-# 2. From the AI_MARKETPLACE folder:
-docker-compose up --build
+Three consumers need this vocabulary and cannot import each other, so it is enforced rather than
+trusted:
 
-# App is now available at:
-#   Frontend  →  http://localhost:3000
-#   Backend   →  http://localhost:5000
-#   ML API    →  http://localhost:5001
-```
+1. **Backend** — schema `enum`s plus request validation. An unknown value returns `400` naming the
+   valid options; it is never coerced to a default.
+2. **Frontend** — `frontend/src/lib/taxonomy.js` is a dependency-free mirror.
+   `backend/tests/taxonomy.contract.test.js` fails if it diverges by so much as a label.
+   In development the app also compares itself against `GET /api/meta/taxonomy` at boot and logs
+   loudly on a mismatch.
+3. **ML service** — `CATEGORY_BASE_PRICES` in `ml_server.py` must cover every category and
+   condition (also asserted by the contract test). Off-taxonomy input returns `400
+   TAXONOMY_MISMATCH` instead of falling back to `other` / `good`.
 
----
+`GET /api/meta/taxonomy` publishes the vocabulary for any other client.
 
-### Option B — Manual Setup (3 terminals)
+Legacy values (`like-new`) are accepted on write and normalized. To fix existing documents:
 
-#### Terminal 1 — MongoDB
-```bash
-# Make sure MongoDB is installed and running
-mongod
-```
-
-#### Terminal 2 — ML Service (Python)
-```bash
-cd ml_service
-pip install -r requirements.txt
-python ml_server.py
-
-# Should print: ML Service starting on port 5001...
-```
-
-#### Terminal 3 — Node.js Backend
 ```bash
 cd backend
-npm install
+npm run migrate:taxonomy            # dry run: reports what would change
+npm run migrate:taxonomy -- --apply # write it
+```
+
+---
+
+## Setup
+
+### Docker (recommended)
+
+```bash
+cp backend/.env.example backend/.env
+# JWT_SECRET is required and has no default — generate one:
+openssl rand -base64 48
+
+docker compose up --build
+```
+
+| Service | URL |
+|---|---|
+| Frontend | http://localhost |
+| Backend API | http://localhost:5000/api |
+| ML service | http://127.0.0.1:5001 (loopback only) |
+| MongoDB | 127.0.0.1:27017 (loopback only) |
+
+### Frontend → API routing
+
+The SPA calls **`/api` on its own origin**. Both the Vite dev server
+(`vite.config.js` → `server.proxy`) and `nginx.conf` proxy that to the backend, so the app works
+under `http://localhost`, `http://marketplace.io` or any other hostname without reconfiguration.
+
+Serving the app under an extra hostname therefore needs only that the hostname be allowed in two
+places:
+
+```yaml
+# frontend/vite.config.js — hostnames the dev server answers for
+server.allowedHosts: ['marketplace.io', 'localhost']
+
+# docker-compose.yml — origins the API accepts (browsers send Origin on writes,
+# and the proxy forwards it, so this is required even for same-origin requests)
+CORS_ORIGINS=${CORS_ORIGINS:-http://marketplace.io,http://localhost,http://localhost:5173}
+```
+
+Override per deployment without editing the file: `CORS_ORIGINS=https://example.edu docker compose up -d`.
+
+Set `VITE_API_BASE_URL` to an absolute URL only if the API genuinely lives on a different origin —
+and add that origin to `CORS_ORIGINS` too. A hardcoded `http://localhost:5000` default is what
+previously broke the app when it was opened as `http://marketplace.io`; a test now guards against
+reintroducing one.
+
+### Manual
+
+```bash
+# 1. MongoDB
+mongod
+
+# 2. ML service
+cd ml_service && pip install -r requirements.txt && python ml_server.py
+
+# 3. Backend
+cd backend && npm install
+cp .env.example .env      # then set JWT_SECRET
+npm run indexes           # create the compound indexes
+npm run seed              # optional: 420 demo listings + 20 accounts
 npm run dev
 
-# Should print: Server running on port 5000
-#               MongoDB connected successfully
+# 4. Frontend
+cd frontend && npm install
+cp .env.example .env
+npm run dev
 ```
 
-#### Frontend
+Demo account created by the seed: **demo@college.edu.in** / **demo1234** (admin).
+
+---
+
+## API reference
+
+All routes are prefixed with `/api`. Errors are always JSON:
+`{ message, code?, errors?: [{ field, message }] }`.
+
+### Platform
+
+| Method | Endpoint | Auth | Notes |
+|---|---|---|---|
+| GET | `/health` | — | Reports database and ML service reachability |
+| GET | `/meta/taxonomy` | — | Canonical categories and conditions |
+| GET | `/stats` | — | Public marketplace figures (no user counts) |
+
+### Auth
+
+| Method | Endpoint | Auth | Notes |
+|---|---|---|---|
+| POST | `/auth/register` | — | `.edu.in` email, password ≥ 8 chars, mobile required |
+| POST | `/auth/login` | — | 20 failed attempts / 15 min per IP |
+| GET | `/auth/me` | JWT | |
+
+### Products
+
+| Method | Endpoint | Auth | Notes |
+|---|---|---|---|
+| GET | `/products` | — | Paginated. `page`, `limit`≤100, `search`, `category`, `condition`, `minPrice`, `maxPrice`, `sort` |
+| GET | `/products/me` | JWT | The caller's own listings, including sold |
+| GET | `/products/:id` | optional | Seller contact details included **only** for signed-in callers |
+| POST | `/products` | JWT | Fraud analysis runs after the response |
+| PUT | `/products/:id` | JWT (owner/admin) | Editing content invalidates the cached fraud verdict |
+| PATCH | `/products/:id/sell` | JWT (owner/admin) | |
+| DELETE | `/products/:id` | JWT (owner/admin) | |
+| GET | `/users/:userId/products` | — | A seller's public listings, no PII |
+| POST | `/upload` | JWT | 5 MB, jpg/png/webp; `503` if Cloudinary is unconfigured |
+
+List responses are `{ products: [...], pagination: { page, limit, total, pages, hasMore } }`.
+
+### AI
+
+| Method | Endpoint | Auth | Notes |
+|---|---|---|---|
+| POST | `/ai/predict-price` | JWT | `{ title, description, category, condition }` |
+| POST | `/ai/fraud-check` | JWT | Check a draft before publishing |
+| GET | `/ai/fraud-check/:productId` | — | Cached verdict; computed once on a miss |
+| GET | `/ai/recommendations/:productId` | — | Ranking cached for 60 s; degrades to `[]` if ML is down |
+| GET | `/ai/insights` | — | Per-category aggregates over active listings |
+
+### Admin
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| GET | `/admin/stats` | Full figures including user counts |
+| GET | `/admin/products` | Moderation list, paginated, `?flagged=true`. **Includes each listing's `aiFraud` verdict** |
+| GET | `/admin/users` | Paginated |
+| GET | `/admin/dashboard` | Products + first page of users |
+| POST | `/admin/fraud/backfill` | Analyzes every listing without a verdict, batched |
+| POST | `/admin/products/:id/reanalyze` | Forces a fresh verdict |
+| DELETE | `/admin/users/:id` | Cannot delete yourself or the last admin |
+
+---
+
+## Security model
+
+- **JWT secret** is required, must be ≥ 32 characters, and values previously committed to this
+  repository are rejected outright. There is no fallback in any environment.
+- **Writes are whitelisted.** Request bodies are never spread into a document, so `seller`,
+  `views`, `isFlagged` and `aiFraud` cannot be set by a client. Availability
+  (`status`/`isActive`/`isSold`) is derived from `quantity` by the model.
+- **Seller contact details** never appear in list responses. They are returned on the single-product
+  endpoint only, and only to authenticated callers.
+- **CORS** is an explicit origin allowlist (`CORS_ORIGINS`); a disallowed origin gets `403`.
+- **Rate limits**: 600/15 min overall, 20 failed logins, 10 registrations, 120 AI calls,
+  100 writes, 40 uploads — per IP.
+- **Search terms are regex-escaped** and length-capped.
+- **Password hashes** are `select: false` and cannot be returned by an over-broad projection.
+- **Token failures are always `401`** with a `code`, so the browser client can clear the session.
+- MongoDB and the ML service are bound to `127.0.0.1`; neither is exposed off-host.
+
+Not yet done: MongoDB runs without authentication (fine for loopback, not for a shared host), and
+the frontend container still runs the Vite dev server rather than a built bundle.
+
+---
+
+## Testing
+
 ```bash
-# Open frontend/index.html in your browser directly, OR
-# Serve it with a simple HTTP server:
-cd frontend
-npx serve .   # or: python3 -m http.server 3000
+cd backend
+npm test
+```
+
+51 tests over auth, taxonomy enforcement, mass assignment, PII redaction, ownership, pagination,
+search escaping, ML-outage behaviour and admin access control — plus the three-way taxonomy contract
+test. The suite uses a real `college_marketplace_test` database and points `ML_SERVICE_URL` at a
+closed port on purpose, so it verifies that the marketplace keeps working when the ML service is
+unavailable.
+
+## Scripts
+
+```bash
+npm run seed                        # demo users + 420 listings, then batched fraud analysis
+npm run migrate:taxonomy [-- --apply]
+npm run indexes                     # create/refresh the compound indexes
+npm run fraud:backfill [-- --limit N]
 ```
 
 ---
 
-## 🧪 Testing the AI Features
+## Replacing the ML service
 
-### Test Price Prediction
-```bash
-curl -X POST http://localhost:5001/api/ml/predict-price \
-  -H "Content-Type: application/json" \
-  -d '{"title":"MacBook Air M1","description":"Good condition laptop","category":"electronics","condition":"good"}'
+The current price, recommendation and fraud implementations are hand-written heuristics. Everything
+the backend knows about them lives in `backend/src/services/mlClient.js`:
+
+```js
+predictPrice({ title, description, category, condition })  // → { predicted_price, price_range, ... }
+recommend({ target, candidates, topN })                     // → [{ productId, score }]
+fraudCheck({ product, sellerHistory })                      // → verdict | null
+fraudCheckBatch([{ product, sellerHistory }])               // → Map<productId, verdict>
 ```
 
-### Test Fraud Detection
-```bash
-# Safe listing
-curl -X POST http://localhost:5001/api/ml/fraud-check \
-  -H "Content-Type: application/json" \
-  -d '{"product":{"title":"Engineering Textbook","description":"Used for one semester, good condition","category":"textbooks","price":350,"condition":"good"}}'
+A replacement only has to satisfy those four functions and the shared taxonomy. Notably, `recommend`
+returns a **ranking**, not products — candidates are already projected down to the eight fields a
+scorer needs, and the caller re-reads the products it wants to render.
 
-# Suspicious listing
-curl -X POST http://localhost:5001/api/ml/fraud-check \
-  -H "Content-Type: application/json" \
-  -d '{"product":{"title":"iPhone 15 Pro Max","description":"URGENT SALE!! Contact on WhatsApp only advance payment send money first","category":"electronics","price":100,"condition":"new"}}'
-```
+Known heuristic weaknesses, left deliberately for the rewrite rather than patched:
 
-### Test Recommendations
-```bash
-# After seeding the database, pick any product _id
-curl http://localhost:5000/api/ai/recommendations/PRODUCT_ID_HERE
-```
-
-### Test Market Insights
-```bash
-curl http://localhost:5000/api/ai/insights
-```
-
----
-
-## 🔮 Upgrading to Production ML Models
-
-The ML service is designed so you can replace the rule-based engines with real trained models:
-
-### Price Prediction → scikit-learn / XGBoost
-```python
-# In ml_server.py, replace predict_price() with:
-import pickle
-model = pickle.load(open('price_model.pkl', 'rb'))
-vectorizer = pickle.load(open('tfidf_vectorizer.pkl', 'rb'))
-
-def predict_price(title, description, category, condition):
-    features = vectorizer.transform([title + ' ' + description])
-    # Add category/condition as one-hot encoded features
-    price = model.predict(features)[0]
-    return { "predicted_price": int(price), ... }
-```
-
-**Training data you need:** Historical listings with `(title, description, category, condition, final_price)` tuples.
-
-### Recommendation System → Collaborative Filtering
-Once you have user interaction data (views, interest clicks, purchases), upgrade to:
-- **Matrix Factorization** (SVD, NMF) using surprise library
-- **Neural Collaborative Filtering** using TensorFlow/PyTorch
-
-### Fraud Detection → Binary Classifier
-Label your flagged listings as fraud (1) vs legitimate (0), then train:
-- **Logistic Regression** or **Random Forest** on the extracted features
-- Use SHAP for explainability to show which features triggered the flag
-
----
-
-## 📡 Complete AI API Reference
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/ai/predict-price` | ✅ JWT | Get price suggestion for a listing |
-| GET | `/api/ai/recommendations/:id` | Optional | Get similar product recommendations |
-| POST | `/api/ai/fraud-check` | None | Analyze a product object for fraud |
-| GET | `/api/ai/fraud-check/:id` | None | Fraud check existing product by ID |
-| GET | `/api/ai/insights` | None | AI-powered market analytics |
-
----
-
-## 👥 Demo Credentials
-```
-Email:    demo@college.edu
-Password: demo123
-```
+- The price model multiplies every matched keyword and clamps at 8×, so it saturates: adding more
+  premium keywords stops changing the answer.
+- The fraud check compares price against the raw category base price while the price model applies
+  keyword multipliers, so premium-brand items get a spurious "unusually high" flag.
+- `seller_history.report_count` is read by the model but nothing produces it — there is no reporting
+  feature yet.
 
 ---
 
