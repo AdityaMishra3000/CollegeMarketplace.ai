@@ -2,12 +2,60 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+
+    <title>CampusMarket — buy, sell and find things around campus</title>
+    <meta
+      name="description"
+      content="The student marketplace for your campus. Buy and sell textbooks, electronics, furniture and gear with people you actually share a timetable with."
+    />
+    <meta name="theme-color" content="#FF8000" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1A1512" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- The display face is the brand; fetch it before first paint so the
+         wordmark and hero do not swap in late. -->
+    <link
+      rel="preload"
+      href="/SpongeboyRegulargx2n6.otf"
+      as="font"
+      type="font/otf"
+      crossorigin
+    />
+
+    <!-- Moved out of index.css: an @import there blocks the stylesheet. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..700;1,14..32,400..600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+
+    <!-- The largest landing photograph, so the hero does not pop in. -->
+    <link rel="preload" as="image" href="/landing/cricket.jpeg" fetchpriority="high" />
   </head>
   <body>
     <div id="root"></div>
+    <!-- Apply the stored/OS theme before first paint, so a dark-mode visitor
+         never sees a white flash while React boots. Kept in sync with
+         src/context/ThemeContext.jsx. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('campusmarket-theme')
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+          document.documentElement.classList.add(theme)
+          document.documentElement.style.colorScheme = theme
+        } catch (e) {
+          document.documentElement.classList.add('light')
+        }
+      })()
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

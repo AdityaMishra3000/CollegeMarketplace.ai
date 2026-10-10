@@ -1,103 +1,159 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..700;1,14..32,400..600&family=JetBrains+Mono:wght@400;500;600&display=swap");
+/*
+  ============================================================================
+  CAMPUSMARKET — DESIGN TOKENS
+  ============================================================================
+
+  Two hand-authored themes as OKLCH custom properties, mapped to Tailwind
+  utilities through `@theme inline`. Components use token utilities only
+  (bg-card, text-muted-foreground, border-border, …) — never raw hex.
+
+  Brand: #FF8000 = oklch(0.732 0.186 53).
+
+  Three separate orange concepts, because one is not enough:
+    --primary             the fill              #FF8000
+    --primary-foreground  ink ON the fill       7.22:1  (white would be 2.52:1 — fails AA)
+    --primary-ink         orange TEXT on white  4.53:1  (a darker orange)
+
+  Neutrals are warm (hue ~55, tiny chroma) rather than the cool blue-greys this
+  file used to carry. Warm greys next to white read as paper and sit under orange
+  without vibrating; cool greys fight it.
+*/
+
 @import "tailwindcss";
 
-/* Class-based dark mode driven by ThemeContext (adds `.dark` on <html>) */
-/* Removed @custom-variant as it is not a standard CSS rule */
+/* Class-based dark mode. ThemeContext toggles `.dark` on <html>; this is the
+   directive that binds `dark:` utilities to that class instead of the OS
+   setting. It was previously commented out, so every `dark:` utility silently
+   followed prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
 
-/*
-  Design tokens.
-  Two deliberately-authored themes — not "white" vs "black".
-  Light  = cool, paper-like neutrals with a confident indigo brand.
-  Dark   = deep slate (never pure black) with the same hierarchy preserved.
-*/
+/* Display face. Drives the wordmark, hero, page and section titles, and large
+   numerals. Never body copy — see --font-sans. */
+@font-face {
+  font-family: "Spongeboy";
+  src: url("/SpongeboyRegulargx2n6.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --radius: 0.75rem;
-
-  /* Surfaces */
-  --background: oklch(0.985 0.003 264);
-  --foreground: oklch(0.21 0.021 266);
+  /* ── Surfaces ─────────────────────────────────────────────────────────
+     Light mode is a white field. `card` is also white and separates from the
+     page with a border, not a tint — an editorial move, not a dashboard one. */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.185 0.012 55);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.021 266);
+  --card-foreground: oklch(0.185 0.012 55);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.021 266);
+  --popover-foreground: oklch(0.185 0.012 55);
 
-  /* Muted / subtle */
-  --muted: oklch(0.968 0.004 264);
-  --muted-foreground: oklch(0.522 0.02 264);
+  /* Warm off-whites for recessed surfaces */
+  --muted: oklch(0.972 0.004 60);
+  --muted-foreground: oklch(0.505 0.014 58);
+  --secondary: oklch(0.958 0.005 60);
+  --secondary-foreground: oklch(0.285 0.014 56);
 
-  /* Secondary surface */
-  --secondary: oklch(0.955 0.006 264);
-  --secondary-foreground: oklch(0.30 0.021 266);
+  /* ── Brand ──────────────────────────────────────────────────────────────
+     Values below were solved, not eyeballed — see scripts/contrast-audit.mjs. */
+  --primary: oklch(0.732 0.186 53);
+  --primary-foreground: oklch(0.2 0.03 53);
+  /* Orange as TEXT. 5.25:1 on white and 4.67:1 on the orange wash below, so it
+     is legible both on the page and inside a primary badge. */
+  --primary-ink: oklch(0.545 0.16 53);
+  --primary-hover: oklch(0.687 0.181 53);
+  --primary-active: oklch(0.647 0.174 53);
+  --primary-muted: oklch(0.9 0.085 53);
+  --primary-subtle: oklch(0.966 0.032 53);
 
-  /* Brand */
-  --primary: oklch(0.515 0.176 264);
-  --primary-foreground: oklch(0.99 0.004 264);
+  /* Brand-tinted interactive surface */
+  --accent: oklch(0.966 0.032 53);
+  --accent-foreground: oklch(0.5 0.15 53);
 
-  /* Accent = subtle brand-tinted interactive surface */
-  --accent: oklch(0.952 0.021 266);
-  --accent-foreground: oklch(0.45 0.16 264);
+  /* ── Semantic ─────────────────────────────────────────────────────────
+     Kept deliberately off-orange so status never reads as brand.
+     `warning` is darker than a "nice" amber because it is rendered as text. */
+  --destructive: oklch(0.555 0.208 25);
+  --destructive-foreground: oklch(0.99 0.004 25);
+  --danger: oklch(0.555 0.208 25);
+  --success: oklch(0.55 0.125 155);
+  --warning: oklch(0.572 0.13 78);
+  --info: oklch(0.55 0.13 240);
 
-  /* Semantic */
-  --destructive: oklch(0.585 0.205 26);
-  --destructive-foreground: oklch(0.99 0.004 26);
-  --danger: oklch(0.585 0.205 26);
-  --success: oklch(0.595 0.13 156);
-  --warning: oklch(0.72 0.15 74);
-  --info: oklch(0.515 0.176 264);
+  /* ── Lines ────────────────────────────────────────────────────────────
+     `border` is decorative (dividers, card edges) and stays airy.
+     `input` is the boundary that identifies a form control, so it carries the
+     3:1 non-text contrast WCAG requires — noticeably darker on purpose.
+     `ring` is the focus indicator and also needs 3:1. */
+  --border: oklch(0.912 0.005 60);
+  --border-strong: oklch(0.79 0.008 58);
+  --input: oklch(0.67 0.008 58);
+  --ring: oklch(0.68 0.17 53);
 
-  /* Lines */
-  --border: oklch(0.92 0.005 264);
-  --border-strong: oklch(0.86 0.008 264);
-  --input: oklch(0.91 0.006 264);
-  --ring: oklch(0.515 0.176 264);
+  /* Ink used for shadows — warm, so elevation matches the palette */
+  --shadow-tint: 28 16 4;
 
   color-scheme: light;
 }
 
 .dark {
-  /* Surfaces */
-  --background: oklch(0.181 0.015 266);
-  --foreground: oklch(0.945 0.006 264);
-  --card: oklch(0.216 0.017 266);
-  --card-foreground: oklch(0.945 0.006 264);
-  --popover: oklch(0.232 0.018 266);
-  --popover-foreground: oklch(0.945 0.006 264);
+  /* Warm near-black, never blue-black and never pure #000 */
+  --background: oklch(0.165 0.008 50);
+  --foreground: oklch(0.955 0.005 60);
+  --card: oklch(0.205 0.009 50);
+  --card-foreground: oklch(0.955 0.005 60);
+  --popover: oklch(0.225 0.01 50);
+  --popover-foreground: oklch(0.955 0.005 60);
 
-  /* Muted / subtle */
-  --muted: oklch(0.262 0.017 266);
-  --muted-foreground: oklch(0.685 0.016 264);
+  --muted: oklch(0.258 0.01 50);
+  --muted-foreground: oklch(0.7 0.013 58);
+  --secondary: oklch(0.268 0.011 50);
+  --secondary-foreground: oklch(0.93 0.006 60);
 
-  /* Secondary surface */
-  --secondary: oklch(0.272 0.017 266);
-  --secondary-foreground: oklch(0.92 0.006 264);
+  /* Same hue, lifted L and trimmed C: 7.03:1 on the dark card */
+  --primary: oklch(0.735 0.175 53);
+  --primary-foreground: oklch(0.185 0.028 53);
+  /* On dark surfaces the fill is already legible as text, so ink === fill */
+  --primary-ink: oklch(0.775 0.165 53);
+  --primary-hover: oklch(0.782 0.17 53);
+  --primary-active: oklch(0.695 0.168 53);
+  --primary-muted: oklch(0.42 0.1 53);
+  --primary-subtle: oklch(0.278 0.055 53);
 
-  /* Brand — brighter so it holds up on dark surfaces */
-  --primary: oklch(0.66 0.16 264);
-  --primary-foreground: oklch(0.16 0.02 266);
+  --accent: oklch(0.29 0.052 53);
+  --accent-foreground: oklch(0.83 0.12 53);
 
-  /* Accent */
-  --accent: oklch(0.305 0.032 266);
-  --accent-foreground: oklch(0.82 0.10 264);
+  /* Danger follows the same rule as the brand in this theme: a saturated fill
+     carrying dark ink. A darker fill with white ink would satisfy the button but
+     leave `text-destructive` at 4.09:1 on the page — one value cannot do both. */
+  --destructive: oklch(0.7 0.17 25);
+  --destructive-foreground: oklch(0.19 0.03 25);
+  --danger: oklch(0.71 0.17 25);
+  --success: oklch(0.7 0.14 155);
+  --warning: oklch(0.79 0.14 78);
+  --info: oklch(0.68 0.14 240);
 
-  /* Semantic */
-  --destructive: oklch(0.63 0.19 26);
-  --destructive-foreground: oklch(0.98 0.004 26);
-  --danger: oklch(0.70 0.17 26);
-  --success: oklch(0.70 0.14 156);
-  --warning: oklch(0.78 0.15 74);
-  --info: oklch(0.66 0.16 264);
+  --border: oklch(0.298 0.011 50);
+  --border-strong: oklch(0.42 0.015 50);
+  /* Same rule as light mode: the control boundary carries 3:1, dividers do not. */
+  --input: oklch(0.484 0.012 50);
+  --ring: oklch(0.75 0.16 53);
 
-  /* Lines */
-  --border: oklch(0.30 0.015 266);
-  --border-strong: oklch(0.40 0.02 266);
-  --input: oklch(0.34 0.016 266);
-  --ring: oklch(0.66 0.16 264);
+  --shadow-tint: 0 0 0;
 
   color-scheme: dark;
 }
 
-/* Map tokens to Tailwind's theme so utilities like bg-card / text-primary work */
+/*
+  ============================================================================
+  TAILWIND THEME
+  ============================================================================
+  Redefining Tailwind's own scales here means every existing `rounded-lg`,
+  `shadow-sm` and `text-sm` in the app is re-skinned by these values — the
+  visual language changes without touching 30 files.
+*/
 @theme inline {
+  /* ── Colour ─────────────────────────────────────────────────────────── */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -108,8 +164,15 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-primary-muted: var(--primary-muted);
+  --color-primary-subtle: var(--primary-subtle);
+
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
@@ -118,23 +181,76 @@
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
+
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  /* ── Type ───────────────────────────────────────────────────────────── */
+  --font-display: "Spongeboy", "Arial Black", system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas,
     monospace;
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
+  /* Editorial display scale — fluid, set in Spongeboy.
+     Spongeboy has bulbous, wide letterforms: negative tracking makes them
+     collide, so the display sizes sit at zero-to-positive tracking, unlike the
+     tight geometric-sans convention. The hero is capped at 6.5rem because
+     larger sizes force the headline to wrap mid-phrase. */
+  --text-hero: clamp(2.625rem, 0.9rem + 6.4vw, 6.5rem);
+  --text-hero--line-height: 0.94;
+  --text-hero--letter-spacing: 0.005em;
+
+  --text-display: clamp(2rem, 1.2rem + 2.8vw, 3.5rem);
+  --text-display--line-height: 1;
+  --text-display--letter-spacing: 0.008em;
+
+  --text-title: clamp(1.5rem, 1.15rem + 1.3vw, 2.125rem);
+  --text-title--line-height: 1.04;
+  --text-title--letter-spacing: 0.01em;
+
+  --text-heading: clamp(1.125rem, 1.05rem + 0.5vw, 1.375rem);
+  --text-heading--line-height: 1.15;
+  --text-heading--letter-spacing: 0.012em;
+
+  /* Eyebrow / kicker label — small, wide, uppercase */
+  --text-eyebrow: 0.6875rem;
+  --text-eyebrow--line-height: 1;
+  --text-eyebrow--letter-spacing: 0.14em;
+
+  --tracking-display: 0.008em;
+  --tracking-eyebrow: 0.14em;
+
+  /* ── Radii ──────────────────────────────────────────────────────────
+     Tightened from the previous 12px base. Small radii + full pills reads
+     editorial; uniform 12–16px everywhere reads like a template. */
+  --radius-sm: 0.1875rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.75rem;
+  --radius-3xl: 1rem;
+
+  /* ── Elevation ────────────────────────────────────────────────────────
+     Warm-tinted rather than neutral black, so shadows belong to the palette. */
+  --shadow-2xs: 0 1px 1px rgb(var(--shadow-tint) / 0.04);
+  --shadow-xs: 0 1px 2px rgb(var(--shadow-tint) / 0.05);
+  --shadow-sm: 0 1px 2px rgb(var(--shadow-tint) / 0.05), 0 2px 6px -2px rgb(var(--shadow-tint) / 0.06);
+  --shadow-md: 0 2px 4px rgb(var(--shadow-tint) / 0.05), 0 6px 16px -4px rgb(var(--shadow-tint) / 0.1);
+  --shadow-lg: 0 4px 8px rgb(var(--shadow-tint) / 0.05), 0 14px 32px -8px rgb(var(--shadow-tint) / 0.13);
+  --shadow-xl: 0 8px 16px rgb(var(--shadow-tint) / 0.06), 0 24px 56px -12px rgb(var(--shadow-tint) / 0.16);
+  --shadow-2xl: 0 12px 24px rgb(var(--shadow-tint) / 0.08), 0 40px 80px -16px rgb(var(--shadow-tint) / 0.22);
+
+  /* ── Motion ─────────────────────────────────────────────────────────
+     Mirrored in src/lib/motion.js for Framer Motion. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   --animate-shimmer: shimmer 1.6s infinite;
+  --animate-marquee: marquee 42s linear infinite;
 }
 
 @layer base {
@@ -144,6 +260,7 @@
 
   html {
     -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
   }
 
   body {
@@ -153,51 +270,129 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-feature-settings: "cv11", "ss01";
-    letter-spacing: -0.01em;
+    letter-spacing: -0.011em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
 
-  /* Tabular, monospace numerals for prices, metrics and IDs */
-  .tabular-nums {
-    font-variant-numeric: tabular-nums;
+  /* Spongeboy is a display face: it needs optical sizing help at large sizes
+     and must never inherit into paragraphs. */
+  .font-display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    text-transform: uppercase;
+    font-feature-settings: normal;
   }
 
-  /* Refined focus ring used across interactive elements */
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* One focus ring for the whole app. Orange, offset, always visible. */
   :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+  :focus:not(:focus-visible) {
     outline: none;
   }
 
   ::selection {
-    background-color: color-mix(in oklch, var(--color-primary) 26%, transparent);
+    background-color: color-mix(in oklch, var(--color-primary) 34%, transparent);
+    color: var(--color-foreground);
   }
 
-  /* Comfortable, quiet scrollbars */
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--color-border-strong) transparent;
   }
-
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
-
   *::-webkit-scrollbar-thumb {
     background-color: var(--color-border-strong);
     border-radius: 9999px;
     border: 3px solid transparent;
     background-clip: content-box;
   }
-
   *::-webkit-scrollbar-thumb:hover {
     background-color: var(--color-muted-foreground);
+  }
+
+  /* Motion is opt-out at the platform level as well as in JS
+     (see useReducedMotion in src/lib/motion.js). */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Named stacking order. Replaces the ad-hoc z-40 / z-50 / z-[60] / z-[70]
+     ladder that was invented per component and could collide. */
+  .z-nav { z-index: 40; }
+  .z-dropdown { z-index: 50; }
+  .z-overlay { z-index: 60; }
+  .z-modal { z-index: 70; }
+  .z-toast { z-index: 80; }
+  .z-palette { z-index: 90; }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Editorial kicker: small, wide, uppercase, muted. */
+  .eyebrow {
+    font-size: var(--text-eyebrow);
+    line-height: 1;
+    letter-spacing: var(--tracking-eyebrow);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  /* Fallback behind every <img>: a warm token-based field, so a missing or
+     slow image is never a white hole or an external placeholder service. */
+  .img-frame {
+    background-color: var(--color-muted);
+    background-image: linear-gradient(
+      135deg,
+      color-mix(in oklch, var(--color-primary) 7%, transparent) 0%,
+      transparent 60%
+    );
+  }
+
+  /* Hairline rule used to separate editorial blocks. */
+  .rule {
+    border-top: 1px solid var(--color-border);
   }
 }
 
 @keyframes shimmer {
   100% {
     transform: translateX(100%);
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
   }
 }

@@ -1,74 +1,82 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card'
+import AuthLayout from '../components/layout/AuthLayout'
 import { Input, Field } from '../components/ui/Input'
+import { Button } from '../components/ui/Button'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [form, setForm] = useState({ email: '', password: '' })
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const update = (field) => (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }))
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     setIsLoading(true)
     try {
-      await login(email, password)
-      navigate('/dashboard')
-    } catch (error) {
-      // Error is handled by the toast in AuthContext
+      await login(form.email, form.password)
+      // Return to wherever the visitor was heading, if anywhere.
+      navigate(location.state?.from || '/dashboard', { replace: true })
+    } catch {
+      // AuthContext raises the toast.
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="flex min-h-[70vh] items-center justify-center">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Welcome back</CardTitle>
-          <CardDescription>Enter your credentials to access your account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Field label="Email" htmlFor="email">
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@university.edu"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </Field>
-            <Field label="Password" htmlFor="password">
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </Field>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {isLoading ? 'Signing in...' : 'Sign in'}
-            </button>
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              Don't have an account?{' '}
-              <Link to="/register" className="font-medium text-primary hover:underline">
-                Register here
-              </Link>
-            </p>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthLayout
+      image="/landing/Football.jpeg"
+      imageAlt="The college football team on the turf pitch"
+      caption="Buy it from someone you already share a timetable with."
+      eyebrow="Welcome back"
+      title="Sign in"
+      footer={
+        <>
+          No account yet?{' '}
+          <Link
+            to="/register"
+            className="font-medium text-primary-ink underline decoration-primary/40 decoration-2 underline-offset-4 transition-colors hover:decoration-primary"
+          >
+            Create one
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <Field label="College email" htmlFor="email">
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            autoFocus
+            placeholder="name@college.edu.in"
+            value={form.email}
+            onChange={update('email')}
+            required
+          />
+        </Field>
+
+        <Field label="Password" htmlFor="password">
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="••••••••"
+            value={form.password}
+            onChange={update('password')}
+            required
+          />
+        </Field>
+
+        <Button type="submit" size="lg" className="w-full" loading={isLoading}>
+          {isLoading ? 'Signing in' : 'Sign in'}
+        </Button>
+      </form>
+    </AuthLayout>
   )
 }

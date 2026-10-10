@@ -46,7 +46,8 @@ export function riskConfig(riskLevel) {
   return LEVELS[riskLevel] || UNKNOWN
 }
 
-export default function FraudBadge({ data, compact = false, showPending = false, className }) {
+export default function FraudBadge({ data, compact = false, showPending = false, size = 'default', className }) {
+  const sizeCls = size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'
   // `data` is the cached verdict that arrives with the product. A missing verdict
   // means "not analyzed yet" — never a reason to issue another ML request from
   // the browser.
@@ -56,7 +57,8 @@ export default function FraudBadge({ data, compact = false, showPending = false,
     return (
       <span
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
+          'inline-flex items-center gap-1.5 rounded-full border font-medium',
+          sizeCls,
           UNKNOWN.className,
           className
         )}
@@ -75,7 +77,8 @@ export default function FraudBadge({ data, compact = false, showPending = false,
     return (
       <span
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold',
+          'inline-flex items-center gap-1.5 rounded-full border font-semibold uppercase tracking-[0.06em]',
+          sizeCls,
           config.className,
           className
         )}
@@ -89,25 +92,40 @@ export default function FraudBadge({ data, compact = false, showPending = false,
   }
 
   return (
-    <div className={cn('rounded-xl border p-4', config.className, className)}>
-      <div className="flex items-center gap-2 font-semibold">
-        <Icon className="h-4 w-4 shrink-0" />
+    <div className={cn('overflow-hidden rounded-xl border', config.className, className)}>
+      <div className="flex items-center gap-2 px-4 py-3 font-semibold">
+        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
         {config.label}
-        <span className="tabular-nums font-medium opacity-80">— score {score}/100</span>
+        <span className="tabular-nums font-medium opacity-75">— score {score}/100</span>
       </div>
 
       {data.recommendation && (
-        <p className="mt-1.5 text-sm opacity-90">{data.recommendation}</p>
+        <p className="px-4 pb-3 text-sm leading-relaxed opacity-90">{data.recommendation}</p>
       )}
 
+      {/*
+        Flags sit in a neutral block rather than inside the verdict's tint. A LOW
+        verdict can still carry notes — the heuristic flags an "unusually high"
+        price for premium brands — and a caution printed inside a green panel
+        reads as a contradiction.
+      */}
       {data.flags?.length > 0 && (
-        <ul className="mt-2 space-y-1">
-          {data.flags.map((flag, index) => (
-            <li key={`${flag.type || 'flag'}-${index}`} className="text-xs opacity-90">
-              • {flag.message}
-            </li>
-          ))}
-        </ul>
+        <div className="border-t border-current/15 bg-card/60 px-4 py-3">
+          <p className="eyebrow mb-2 text-muted-foreground">
+            {data.flags.length === 1 ? 'Note' : `${data.flags.length} notes`}
+          </p>
+          <ul className="space-y-1.5">
+            {data.flags.map((flag, index) => (
+              <li
+                key={`${flag.type || 'flag'}-${index}`}
+                className="flex gap-2 text-xs leading-relaxed text-muted-foreground"
+              >
+                <span aria-hidden="true" className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-current opacity-50" />
+                {flag.message}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   )

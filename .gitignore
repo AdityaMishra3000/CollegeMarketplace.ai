@@ -50,3 +50,8 @@ env/
 *.log
 *.sqlite3
 *.db
+
+
+# Claude Code local configuration
+.claude/
+CLAUDE.local.md

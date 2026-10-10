@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Search, Filter, Loader2 } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { usePaginatedList } from '../hooks/usePaginatedList'
-import { useListings } from '../context/ListingsContext'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
+import { useListings } from '../context/ListingsContext'
 import { getProducts } from '../api/products'
-import { CATEGORIES, CONDITIONS } from '../lib/constants'
-import { Input, Select } from '../components/ui/Input'
-import { EmptyState, ErrorState, Spinner } from '../components/ui/States'
+import { CATEGORIES, CONDITIONS, categoryLabel, conditionLabel } from '../lib/constants'
+import { useMotion } from '../lib/motion'
+import { Input, Select, Field } from '../components/ui/Input'
+import Modal from '../components/ui/Modal'
+import { Button } from '../components/ui/Button'
+import { PageHeader, Eyebrow } from '../components/ui/Editorial'
+import { CardGridSkeleton, EmptyState, ErrorState } from '../components/ui/States'
 import ProductCard from '../components/marketplace/ProductCard'
 
 const SORT_OPTIONS = [
@@ -17,9 +22,14 @@ const SORT_OPTIONS = [
   { value: 'popular', label: 'Most viewed' },
 ]
 
+const DEFAULTS = { search: '', category: 'all', condition: 'all', sort: 'newest' }
+
 export default function Marketplace() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { version } = useListings()
+  const m = useMotion()
+
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   const [filters, setFilters] = useState(() => ({
     search: searchParams.get('search') || '',
@@ -51,123 +61,275 @@ export default function Marketplace() {
       version,
     ])
 
-  const handleFilterChange = (key, value) => {
-    const next = { ...filters, [key]: value }
-    setFilters(next)
-
+  const writeParams = (next) => {
     const params = new URLSearchParams()
-    if (next.search) params.set('search', next.search)
-    if (next.category !== 'all') params.set('category', next.category)
-    if (next.condition !== 'all') params.set('condition', next.condition)
-    if (next.sort !== 'newest') params.set('sort', next.sort)
+    for (const key of ['search', 'category', 'condition', 'sort']) {
+      if (next[key] && next[key] !== DEFAULTS[key]) params.set(key, next[key])
+    }
     setSearchParams(params, { replace: true })
   }
 
+  const setFilter = (key, value) => {
+    const next = { ...filters, [key]: value }
+    setFilters(next)
+    writeParams(next)
+  }
+
   const clearFilters = () => {
-    setFilters({ search: '', category: 'all', condition: 'all', sort: 'newest' })
+    setFilters(DEFAULTS)
     setSearchParams(new URLSearchParams(), { replace: true })
   }
 
+  const activeCount = ['search', 'category', 'condition', 'sort'].filter(
+    (key) => filters[key] !== DEFAULTS[key]
+  ).length
+
+  /* Active filters shown as removable chips, so what is narrowing the results is
+     always visible rather than buried inside three select boxes. */
+  const chips = [
+    filters.search && { key: 'search', label: `“${filters.search}”` },
+    filters.category !== 'all' && { key: 'category', label: categoryLabel(filters.category) },
+    filters.condition !== 'all' && { key: 'condition', label: conditionLabel(filters.condition) },
+    filters.sort !== 'newest' && {
+      key: 'sort',
+      label: SORT_OPTIONS.find((s) => s.value === filters.sort)?.label,
+    },
+  ].filter(Boolean)
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Marketplace</h1>
-          <p className="text-sm text-muted-foreground">
-            Discover items from students on campus.
-            {!loading && total > 0 && (
-              <span> Showing {items.length} of {total}.</span>
-            )}
-          </p>
-        </div>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        eyebrow="Everything on campus"
+        title="The marketplace"
+        description="Listings from students at your college. Contact details unlock once you are signed in."
+      />
 
-      {/* Filter Bar */}
-      <div className="grid gap-4 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 md:grid-cols-5">
-        <div className="md:col-span-2">
-          <Input
-            icon={Search}
-            placeholder="Search products..."
-            aria-label="Search products"
-            value={filters.search}
-            onChange={(e) => handleFilterChange('search', e.target.value)}
-          />
-        </div>
-        <Select
-          aria-label="Filter by category"
-          value={filters.category}
-          onChange={(e) => handleFilterChange('category', e.target.value)}
-        >
-          <option value="all">All Categories</option>
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </Select>
-        <Select
-          aria-label="Filter by condition"
-          value={filters.condition}
-          onChange={(e) => handleFilterChange('condition', e.target.value)}
-        >
-          <option value="all">All Conditions</option>
-          {CONDITIONS.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </Select>
-        <Select
-          aria-label="Sort results"
-          value={filters.sort}
-          onChange={(e) => handleFilterChange('sort', e.target.value)}
-        >
-          {SORT_OPTIONS.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </Select>
-      </div>
-
-      <div className="min-h-[50vh]">
-        {loading ? (
-          <div className="flex h-64 items-center justify-center">
-            <Spinner className="h-8 w-8 text-primary" />
+      {/* Filter bar. Sticks under the navbar so filtering never needs a scroll up.
+          On phones the three selects collapse into a sheet — stacked full-width
+          they ate a third of the viewport before a single listing appeared. */}
+      <div className="sticky top-16 z-dropdown -mx-5 border-y border-border bg-background/90 px-5 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1 lg:max-w-sm">
+            <Input
+              icon={Search}
+              type="search"
+              placeholder="Search listings…"
+              aria-label="Search listings"
+              value={filters.search}
+              onChange={(e) => setFilter('search', e.target.value)}
+            />
           </div>
+
+          <Button
+            variant="outline"
+            className="shrink-0 lg:hidden"
+            onClick={() => setSheetOpen(true)}
+            aria-label="Open filters"
+          >
+            <SlidersHorizontal />
+            Filters
+            {activeCount > 0 && (
+              <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-semibold tabular-nums text-primary-foreground">
+                {activeCount}
+              </span>
+            )}
+          </Button>
+
+          <div className="ml-auto hidden gap-3 lg:grid lg:grid-cols-3">
+            <FilterSelects filters={filters} setFilter={setFilter} />
+          </div>
+        </div>
+
+        <AnimatePresence initial={false}>
+          {chips.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={m.transitions.fast}
+              className="overflow-hidden"
+            >
+              <div className="flex flex-wrap items-center gap-2 pt-3">
+                <Eyebrow className="mr-1 hidden sm:inline">Filtering</Eyebrow>
+                {chips.map((chip) => (
+                  <button
+                    key={chip.key}
+                    onClick={() => setFilter(chip.key, DEFAULTS[chip.key])}
+                    aria-label={`Remove filter ${chip.label}`}
+                    className="group inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary-subtle px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-primary-ink transition-colors hover:border-primary/60"
+                  >
+                    {chip.label}
+                    <X className="h-3 w-3 opacity-60 transition-opacity group-hover:opacity-100" aria-hidden="true" />
+                  </button>
+                ))}
+                <button
+                  onClick={clearFilters}
+                  className="ml-1 text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+                >
+                  Clear all
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Mobile filter sheet. Modal already renders as a bottom sheet on phones. */}
+      <Modal
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        size="sm"
+        eyebrow="Narrow it down"
+        title="Filters"
+        footer={
+          <>
+            <Button variant="ghost" onClick={clearFilters} disabled={activeCount === 0}>
+              Clear all
+            </Button>
+            <Button onClick={() => setSheetOpen(false)}>
+              Show {total} {total === 1 ? 'listing' : 'listings'}
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-5">
+          <FilterSelects filters={filters} setFilter={setFilter} withLabels />
+        </div>
+      </Modal>
+
+      <div className="min-h-[60vh]">
+        {loading ? (
+          <CardGridSkeleton count={8} />
         ) : error ? (
-          <ErrorState title="Failed to load products" description={error} onRetry={refresh} />
+          <ErrorState title="Could not load listings" description={error} onRetry={refresh} />
         ) : items.length === 0 ? (
           <EmptyState
-            icon={Filter}
-            title="No products found"
-            description="Try adjusting your filters or search query to find what you're looking for."
+            icon={SlidersHorizontal}
+            eyebrow="No matches"
+            title="Nothing fits those filters"
+            description="Try a broader search, a different category, or clear the filters and start again."
             action={
-              <button
-                onClick={clearFilters}
-                className="rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-              >
-                Clear all filters
-              </button>
+              chips.length > 0 ? (
+                <Button variant="outline" onClick={clearFilters}>
+                  Clear all filters
+                </Button>
+              ) : null
             }
           />
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {items.map((product) => (
-                <ProductCard key={product._id} product={product} />
-              ))}
+            <div className="mb-5 flex items-baseline justify-between gap-4">
+              <Eyebrow>
+                Showing {items.length} of {total}
+              </Eyebrow>
             </div>
 
+            {/* `layout` lets the grid reflow when filters change instead of snapping. */}
+            <motion.div
+              layout={!m.reduced}
+              transition={m.transitions.layout}
+              className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            >
+              <AnimatePresence mode="popLayout" initial={false}>
+                {items.map((product, i) => (
+                  <motion.div
+                    key={product._id}
+                    layout={!m.reduced}
+                    initial={{ opacity: 0, y: m.reduced ? 0 : 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: m.reduced ? 1 : 0.97 }}
+                    transition={{
+                      ...m.transitions.normal,
+                      delay: m.reduced ? 0 : Math.min(i, 11) * 0.025,
+                    }}
+                  >
+                    <ProductCard product={product} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+
             {hasMore && (
-              <div className="mt-8 flex justify-center">
-                <button
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-60"
-                >
-                  {loadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {loadingMore ? 'Loading…' : `Load more (${total - items.length} left)`}
-                </button>
+              <div className="mt-10 flex flex-col items-center gap-3">
+                <Button variant="outline" size="lg" onClick={loadMore} loading={loadingMore}>
+                  {loadingMore ? 'Loading' : `Load ${Math.min(24, total - items.length)} more`}
+                </Button>
+                <Eyebrow>{total - items.length} listings left</Eyebrow>
               </div>
             )}
           </>
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * The three taxonomy/sort selects. Rendered inline in the desktop toolbar and
+ * inside the mobile sheet, so there is one definition rather than two.
+ */
+function FilterSelects({ filters, setFilter, withLabels = false }) {
+  const wrap = (label, htmlFor, control) =>
+    withLabels ? (
+      <Field label={label} htmlFor={htmlFor}>
+        {control}
+      </Field>
+    ) : (
+      control
+    )
+
+  return (
+    <>
+      {wrap(
+        'Category',
+        'filter-category',
+        <Select
+          id="filter-category"
+          aria-label="Filter by category"
+          value={filters.category}
+          onChange={(e) => setFilter('category', e.target.value)}
+        >
+          <option value="all">All categories</option>
+          {CATEGORIES.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </Select>
+      )}
+      {wrap(
+        'Condition',
+        'filter-condition',
+        <Select
+          id="filter-condition"
+          aria-label="Filter by condition"
+          value={filters.condition}
+          onChange={(e) => setFilter('condition', e.target.value)}
+        >
+          <option value="all">Any condition</option>
+          {CONDITIONS.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </Select>
+      )}
+      {wrap(
+        'Sort by',
+        'filter-sort',
+        <Select
+          id="filter-sort"
+          aria-label="Sort results"
+          value={filters.sort}
+          onChange={(e) => setFilter('sort', e.target.value)}
+        >
+          {SORT_OPTIONS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </Select>
+      )}
+    </>
   )
 }

@@ -1,93 +1,137 @@
-import { useEffect, useState } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
-import { motion, AnimatePresence } from "framer-motion"
-import {
-  Search,
-  Plus,
-  Menu,
-  X,
-  Sun,
-  Moon,
-  LayoutDashboard,
-  Store,
-  LogOut,
-  Shield,
-  Command,
-} from "lucide-react"
-import { cn } from "../../lib/utils"
-import { useAuth } from "../../context/AuthContext"
-import { useTheme } from "../../context/ThemeContext"
-import { Button } from "../ui/Button"
-import Avatar from "../ui/Avatar"
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion, useMotionValueEvent, useScroll } from 'framer-motion'
+import { Search, Plus, Menu, X, Sun, Moon, LayoutDashboard, Store, LogOut, Shield, Command } from 'lucide-react'
+import { cn } from '../../lib/utils'
+import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
+import { useMotion } from '../../lib/motion'
+import { Button } from '../ui/Button'
+import Avatar from '../ui/Avatar'
 
 const NAV_LINKS = [
-  { to: "/marketplace", label: "Marketplace", icon: Store },
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, auth: true },
+  { to: '/marketplace', label: 'Marketplace', icon: Store },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, auth: true },
 ]
 
-export function Navbar({ onOpenCommand, onOpenSell }) {
+/**
+ * Application masthead.
+ *
+ * `transparent` is used on the landing page, where the nav sits on the hero and
+ * only grows a border once the page has scrolled. Everywhere else it is a
+ * permanent bordered bar.
+ */
+export function Navbar({ onOpenCommand, onOpenSell, transparent = false }) {
   const { user, logout } = useAuth()
   const { theme, toggle } = useTheme()
   const location = useLocation()
   const navigate = useNavigate()
+  const m = useMotion()
+
   const [mobileOpen, setMobileOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const menuRef = useRef(null)
+  const menuButtonRef = useRef(null)
 
-  const isActive = (to) => location.pathname === to || location.pathname.startsWith(to + "/")
+  const { scrollY } = useScroll()
+  useMotionValueEvent(scrollY, 'change', (y) => setScrolled(y > 12))
+
+  const isActive = (to) => location.pathname === to || location.pathname.startsWith(`${to}/`)
 
   const handleLogout = () => {
     logout()
     setMenuOpen(false)
     setMobileOpen(false)
-    navigate("/")
+    navigate('/')
   }
 
-  // Wire the advertised ⌘K / Ctrl+K hint to the existing command-palette trigger.
+  // ⌘K / Ctrl+K opens the palette.
   useEffect(() => {
     const onKey = (e) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault()
         onOpenCommand?.()
       }
     }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [onOpenCommand])
 
-  // Close the mobile drawer whenever the route changes.
   useEffect(() => {
     setMobileOpen(false)
+    setMenuOpen(false)
   }, [location.pathname])
 
+  // Close the account menu on Escape or an outside click, and return focus.
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false)
+        menuButtonRef.current?.focus()
+      }
+    }
+    const onClick = (e) => {
+      if (!menuRef.current?.contains(e.target) && !menuButtonRef.current?.contains(e.target)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onClick)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onClick)
+    }
+  }, [menuOpen])
+
+  // The mobile sheet owns the scroll while it is open.
+  useEffect(() => {
+    if (!mobileOpen) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [mobileOpen])
+
+  const solid = !transparent || scrolled || mobileOpen
+
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="flex shrink-0 items-center gap-2.5" aria-label="CampusMarket home">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm shadow-primary/30 ring-1 ring-inset ring-white/10">
-            <Store className="h-[18px] w-[18px]" strokeWidth={2.4} />
-          </span>
-          <span className="hidden text-[15px] font-semibold tracking-tight text-foreground sm:block">
-            Campus<span className="text-primary">Market</span>
-          </span>
+    <header
+      className={cn(
+        'sticky top-0 z-nav transition-[background-color,border-color,box-shadow] duration-300',
+        solid
+          ? 'border-b border-border bg-background/85 backdrop-blur-xl'
+          : 'border-b border-transparent bg-transparent'
+      )}
+    >
+      <div className="mx-auto flex h-16 max-w-[1600px] items-center gap-3 px-5 sm:px-6">
+        <Link
+          to="/"
+          className="flex shrink-0 items-baseline gap-0 rounded-md font-display text-[1.375rem] leading-none tracking-tight"
+          aria-label="CampusMarket — home"
+        >
+          <span className="text-foreground">Campus</span>
+          <span className="text-primary-ink">Market</span>
         </Link>
 
-        <nav className="ml-2 hidden items-center gap-1 md:flex">
+        <nav className="ml-4 hidden items-center gap-0.5 md:flex" aria-label="Main">
           {NAV_LINKS.filter((l) => !l.auth || user).map((link) => (
             <Link
               key={link.to}
               to={link.to}
+              aria-current={isActive(link.to) ? 'page' : undefined}
               className={cn(
-                "relative rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive(link.to)
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
+                'relative rounded-md px-3 py-2 text-[0.8125rem] font-medium uppercase tracking-[0.08em] transition-colors',
+                isActive(link.to) ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {isActive(link.to) && (
                 <motion.span
                   layoutId="nav-active"
-                  className="absolute inset-0 rounded-lg bg-muted"
-                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                  className="absolute inset-x-3 -bottom-px h-0.5 bg-primary"
+                  transition={m.reduced ? { duration: 0.01 } : { type: 'spring', stiffness: 420, damping: 34 }}
                 />
               )}
               <span className="relative">{link.label}</span>
@@ -98,31 +142,31 @@ export function Navbar({ onOpenCommand, onOpenSell }) {
         <div className="flex flex-1 items-center justify-end gap-2">
           <button
             onClick={onOpenCommand}
-            className="hidden h-9 items-center gap-2 rounded-lg border border-border bg-card pl-2.5 pr-2 text-sm text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground sm:flex"
-            aria-label="Search"
+            className="hidden h-10 items-center gap-2 rounded-lg border border-input bg-card pl-3 pr-2 text-sm text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground sm:flex"
+            aria-label="Search listings"
           >
-            <Search className="h-4 w-4" />
-            <span className="pr-6">Search…</span>
-            <kbd className="inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-              <Command className="h-3 w-3" />K
+            <Search className="h-4 w-4" aria-hidden="true" />
+            <span className="pr-8 text-[0.8125rem]">Search…</span>
+            <kbd className="inline-flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium">
+              <Command className="h-3 w-3" aria-hidden="true" />K
             </kbd>
           </button>
 
           <button
             onClick={toggle}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
-            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-input bg-card text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground"
+            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           >
             <AnimatePresence mode="wait" initial={false}>
               <motion.span
                 key={theme}
-                initial={{ opacity: 0, rotate: -30, scale: 0.8 }}
+                initial={{ opacity: 0, rotate: m.reduced ? 0 : -35, scale: 0.85 }}
                 animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                exit={{ opacity: 0, rotate: 30, scale: 0.8 }}
-                transition={{ duration: 0.18 }}
+                exit={{ opacity: 0, rotate: m.reduced ? 0 : 35, scale: 0.85 }}
+                transition={{ duration: m.reduced ? 0.01 : 0.18 }}
                 className="flex items-center justify-center"
               >
-                {theme === "dark" ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
+                {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </motion.span>
             </AnimatePresence>
           </button>
@@ -130,57 +174,60 @@ export function Navbar({ onOpenCommand, onOpenSell }) {
           {user ? (
             <>
               <Button size="sm" onClick={onOpenSell} className="hidden sm:inline-flex">
-                <Plus className="h-4 w-4" />
+                <Plus />
                 Sell
               </Button>
 
               <div className="relative hidden md:block">
                 <button
+                  ref={menuButtonRef}
                   onClick={() => setMenuOpen((v) => !v)}
-                  className="flex items-center rounded-full outline-none ring-offset-2 ring-offset-background transition focus-visible:ring-2 focus-visible:ring-ring/55"
+                  className="flex rounded-full transition"
                   aria-label="Account menu"
                   aria-expanded={menuOpen}
+                  aria-haspopup="menu"
                 >
                   <Avatar name={user.name} size="md" />
                 </button>
+
                 <AnimatePresence>
                   {menuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                      <motion.div
-                        initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                        transition={{ duration: 0.14 }}
-                        className="absolute right-0 z-20 mt-2 w-60 overflow-hidden rounded-xl border border-border bg-popover p-1.5 shadow-xl"
-                      >
-                        <div className="flex items-center gap-3 border-b border-border px-2.5 pb-2.5 pt-1.5">
-                          <Avatar name={user.name} size="md" />
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
-                            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-                          </div>
+                    <motion.div
+                      ref={menuRef}
+                      role="menu"
+                      variants={m.overlay.panel}
+                      initial="hidden"
+                      animate="show"
+                      exit="exit"
+                      className="absolute right-0 z-dropdown mt-2 w-64 overflow-hidden rounded-xl border border-border bg-popover shadow-xl"
+                    >
+                      <div className="flex items-center gap-3 border-b border-border p-3.5">
+                        <Avatar name={user.name} size="md" />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                         </div>
-                        <div className="pt-1.5">
-                          <MenuItem to="/dashboard" icon={LayoutDashboard} onClick={() => setMenuOpen(false)}>
-                            Dashboard
+                      </div>
+                      <div className="p-1.5">
+                        <MenuItem to="/dashboard" icon={LayoutDashboard} onClick={() => setMenuOpen(false)}>
+                          Dashboard
+                        </MenuItem>
+                        {user.role === 'admin' && (
+                          <MenuItem to="/admin" icon={Shield} onClick={() => setMenuOpen(false)}>
+                            Admin console
                           </MenuItem>
-                          {user.role === "admin" && (
-                            <MenuItem to="/admin" icon={Shield} onClick={() => setMenuOpen(false)}>
-                              Admin console
-                            </MenuItem>
-                          )}
-                          <div className="my-1 h-px bg-border" />
-                          <button
-                            onClick={handleLogout}
-                            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
-                          >
-                            <LogOut className="h-4 w-4" />
-                            Sign out
-                          </button>
-                        </div>
-                      </motion.div>
-                    </>
+                        )}
+                        <div className="my-1.5 h-px bg-border" />
+                        <button
+                          role="menuitem"
+                          onClick={handleLogout}
+                          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          Sign out
+                        </button>
+                      </div>
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </div>
@@ -198,8 +245,8 @@ export function Navbar({ onOpenCommand, onOpenSell }) {
 
           <button
             onClick={() => setMobileOpen((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-foreground transition-colors hover:border-border-strong md:hidden"
-            aria-label="Menu"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-input bg-card text-foreground transition-colors hover:border-border-strong md:hidden"
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileOpen}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -207,97 +254,16 @@ export function Navbar({ onOpenCommand, onOpenSell }) {
         </div>
       </div>
 
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t border-border bg-background md:hidden"
-          >
-            <div className="space-y-1 px-4 py-4">
-              {user && (
-                <div className="mb-2 flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5">
-                  <Avatar name={user.name} size="md" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-                  </div>
-                </div>
-              )}
-              <button
-                onClick={() => {
-                  onOpenCommand()
-                  setMobileOpen(false)
-                }}
-                className="flex w-full items-center gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 text-sm text-muted-foreground"
-              >
-                <Search className="h-4 w-4" />
-                Search products
-              </button>
-              {NAV_LINKS.filter((l) => !l.auth || user).map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    isActive(link.to)
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                  )}
-                >
-                  <link.icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              ))}
-              {user ? (
-                <>
-                  {user.role === "admin" && (
-                    <Link
-                      to="/admin"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                    >
-                      <Shield className="h-4 w-4" />
-                      Admin console
-                    </Link>
-                  )}
-                  <div className="flex flex-col gap-2 pt-2">
-                    <Button
-                      onClick={() => {
-                        onOpenSell()
-                        setMobileOpen(false)
-                      }}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Sell an item
-                    </Button>
-                    <Button variant="outline" onClick={handleLogout}>
-                      <LogOut className="h-4 w-4" />
-                      Sign out
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col gap-2 pt-2">
-                  <Button variant="outline" asChild>
-                    <Link to="/login" onClick={() => setMobileOpen(false)}>
-                      Sign in
-                    </Link>
-                  </Button>
-                  <Button asChild>
-                    <Link to="/register" onClick={() => setMobileOpen(false)}>
-                      Get started
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <MobileSheet
+        open={mobileOpen}
+        user={user}
+        isActive={isActive}
+        onClose={() => setMobileOpen(false)}
+        onOpenCommand={onOpenCommand}
+        onOpenSell={onOpenSell}
+        onLogout={handleLogout}
+        m={m}
+      />
     </header>
   )
 }
@@ -305,12 +271,105 @@ export function Navbar({ onOpenCommand, onOpenSell }) {
 function MenuItem({ to, icon: Icon, children, onClick }) {
   return (
     <Link
+      role="menuitem"
       to={to}
       onClick={onClick}
-      className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-muted"
+      className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-foreground transition-colors hover:bg-muted"
     >
       <Icon className="h-4 w-4 text-muted-foreground" />
       {children}
     </Link>
+  )
+}
+
+/** Full-height mobile sheet — designed, not a collapsed desktop bar. */
+function MobileSheet({ open, user, isActive, onClose, onOpenCommand, onOpenSell, onLogout, m }) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          variants={m.overlay.sheet}
+          initial="hidden"
+          animate="show"
+          exit="exit"
+          className="fixed inset-x-0 bottom-0 top-16 z-nav overflow-y-auto border-t border-border bg-background md:hidden"
+        >
+          <div className="flex min-h-full flex-col p-5">
+            {user && (
+              <div className="mb-6 flex items-center gap-3 border-b border-border pb-5">
+                <Avatar name={user.name} size="lg" />
+                <div className="min-w-0">
+                  <p className="truncate font-display text-heading text-foreground">{user.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                </div>
+              </div>
+            )}
+
+            <nav className="flex flex-col" aria-label="Mobile">
+              {NAV_LINKS.filter((l) => !l.auth || user).map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onClick={onClose}
+                  aria-current={isActive(link.to) ? 'page' : undefined}
+                  className={cn(
+                    'flex items-center justify-between border-b border-border py-4 font-display text-title transition-colors',
+                    isActive(link.to) ? 'text-primary-ink' : 'text-foreground'
+                  )}
+                >
+                  {link.label}
+                  <link.icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                </Link>
+              ))}
+            </nav>
+
+            <button
+              onClick={() => {
+                onOpenCommand()
+                onClose()
+              }}
+              className="mt-6 flex h-12 w-full items-center gap-2.5 rounded-lg border border-input bg-card px-4 text-sm text-muted-foreground"
+            >
+              <Search className="h-4 w-4" aria-hidden="true" />
+              Search listings
+            </button>
+
+            <div className="mt-auto flex flex-col gap-2.5 pt-8">
+              {user ? (
+                <>
+                  <Button
+                    size="lg"
+                    onClick={() => {
+                      onOpenSell()
+                      onClose()
+                    }}
+                  >
+                    <Plus />
+                    Sell an item
+                  </Button>
+                  <Button variant="outline" size="lg" onClick={onLogout}>
+                    <LogOut />
+                    Sign out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button asChild size="lg">
+                    <Link to="/register" onClick={onClose}>
+                      Create an account
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg">
+                    <Link to="/login" onClick={onClose}>
+                      Sign in
+                    </Link>
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

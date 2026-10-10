@@ -28,6 +28,9 @@ const toPage = (response) => ({
 
 // -- PUBLIC --
 
+/** Public marketplace figures. Deliberately narrower than /admin/stats. */
+export const getPublicStats = () => API.get('/stats')
+
 export const getProducts = async (options) =>
   toPage(await API.get(`/products?${listParams(options)}`))
 

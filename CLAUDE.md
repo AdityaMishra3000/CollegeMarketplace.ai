@@ -263,35 +263,78 @@ Everything is under `/api`. Route files live in `src/routes/*.routes.js`, mounte
   backend it is talking to.
 - Auth state is in `AuthContext`; the token lives in `localStorage`. `ProtectedRoute` in `App.jsx`
   waits on `loading` before redirecting so the login screen does not flash.
-- Route-protected pages are `/dashboard` and `/admin` (the latter `requireAdmin`). There is no
+- `/` renders the landing page for visitors and redirects signed-in users to `/marketplace`.
+  Route-protected pages are `/dashboard` and `/admin` (the latter `requireAdmin`). There is no
   `/profile` route — do not link to one.
+- The landing page opts out of the app's page container (`AppShell` checks `pathname === '/'`) and
+  composes full-bleed sections from `components/landing/`. Its figures come from the existing public
+  `GET /api/stats`, `GET /api/products` and `GET /api/ai/insights` — never mock data.
 
 ## Design system and UI conventions
 
-Tailwind v4 via `@tailwindcss/vite`, driven entirely by tokens in `src/index.css`.
+Tailwind v4 via `@tailwindcss/vite`, driven entirely by tokens in `src/index.css`. Extend that token
+layer; never scatter hex values through JSX.
 
-- Two hand-authored themes as CSS custom properties in `:root` and `.dark`, in **OKLCH**, mapped to
-  Tailwind utilities through `@theme inline` (`--color-background`, `--color-primary`, `--color-success`,
-  `--color-warning`, `--color-destructive`, `--color-danger`, `--color-info`, `--color-border-strong`, …).
-- **Always use token utilities** — `bg-card`, `text-muted-foreground`, `border-border`,
-  `text-destructive`. Never hardcode hex colours or raw Tailwind palette classes; a component that did
-  (`FraudBadge`) was unreadable in dark mode until it was converted.
-- Theme switching is class-based: `ThemeContext` toggles `.dark` on `<html>`. Note the token overrides
-  do the work — `@custom-variant` is commented out in `index.css`, so a `dark:` *utility* follows the OS
-  setting rather than the toggle. Prefer tokens over `dark:` variants.
-- Primitives in `src/components/ui/`: `Button` (variants `primary|secondary|outline|ghost|danger|link`,
-  sizes `default|sm|lg|icon`, `asChild` for rendering a `<Link>`, `loading` prop), `Card` +
-  `CardHeader/Title/Description/Content/Footer`, `Badge` (8 variants), `Input`/`Textarea`/`Select`/
-  `Label`/`Field`, `Modal` (portal, Escape to close, scroll lock), `Toast` via `useToast()`,
-  `Avatar` (initials), and `States` → `Skeleton`/`EmptyState`/`ErrorState`/`Spinner`. Reach for these
-  before writing new markup; loading/empty/error branches should use `States`.
-- Compose classes with `cn()` from `src/lib/utils.js` (clsx + tailwind-merge). Format money with
-  `formatPrice()` from the same file — one `₹` formatter for the whole app — and add `tabular-nums` to
-  numeric cells.
-- Icons are lucide-react; animation is framer-motion (`AnimatePresence` for mount/unmount).
-- Import style, as observed: `src/components/ui/*` and `CommandPalette` use the `@/` alias;
-  everything else uses relative paths. Both work (`@` → `./src` in `vite.config.js`).
-- Interactive elements carry `aria-label`/`aria-expanded`; `Field` wires labels to controls.
+**Brand: `#FF8000` = `oklch(0.732 0.186 53)`.** Light mode is a white field with warm neutrals
+(hue ~55, tiny chroma); orange marks interaction, brand and state only. Three separate orange
+concepts exist because one cannot do the job — `scripts/contrast-audit.mjs` proves it:
+
+| Token | Use | Why |
+|---|---|---|
+| `--primary` | the fill | #FF8000 exactly |
+| `--primary-foreground` | ink **on** the fill | white on #FF8000 is **2.52:1 and fails AA**; this is warm near-black at 7.22:1 |
+| `--primary-ink` | orange **as text** | 5.25:1 on white — `text-primary` would fail at any size |
+
+The primary button also carries a `--primary-active` border: the fill itself is only 2.52:1 against
+white, so the border is what gives the control a WCAG 1.4.11-compliant boundary. `--input` is
+deliberately darker than `--border` for the same reason (form-control boundaries need 3:1; decorative
+dividers do not). Dark mode keeps the same hue, lifts L, and puts dark ink on both the orange and the
+danger fill.
+
+Run `node scripts/contrast-audit.mjs` after any token change — it parses the real `:root`/`.dark`
+blocks and checks 19 pairs per theme. It must exit 0.
+
+**Type is a two-face system.** `--font-display` is Spongeboy (`public/SpongeboyRegulargx2n6.otf`,
+`@font-face` in index.css, preloaded in index.html) for the wordmark, hero, page/section titles and
+large numerals. `--font-sans` is Inter for everything readable. Rules:
+
+- Spongeboy has **203 glyphs and no `₹` (U+20B9)**, so a price set in the display face silently falls
+  back for that one character and renders at a different weight. Always use `<Price>` from
+  `ui/Editorial.jsx`, which sets the symbol in the sans face, optically centred.
+- Its letterforms are bulbous and wide, so the display sizes carry **zero-to-positive tracking**, not
+  the usual negative. `--text-hero` is capped at 6.5rem; larger forces mid-phrase wrapping.
+- Never use it for body copy, form labels or table cells.
+
+**Scales are redefined, not added to.** `--radius-*` (tight: `rounded-lg` is 6px) and `--shadow-*`
+(warm-tinted) are overridden in `@theme inline`, so changing them re-skins every existing utility.
+Named z-index utilities (`z-nav`, `z-dropdown`, `z-overlay`, `z-modal`, `z-toast`, `z-palette`)
+replace the old ad-hoc `z-[60]`/`z-[70]` ladder.
+
+**Motion lives in `src/lib/motion.js`** — four patterns reused everywhere (reveal, press, overlay,
+image) plus `useMotion()`, which collapses distance and duration under `prefers-reduced-motion`.
+Import from there rather than writing new transitions. Button press feedback is CSS, not Framer
+Motion, so it behaves identically when `asChild` renders a `<Link>`.
+
+**Primitives in `src/components/ui/`.** `Button` (`primary|ink|secondary|outline|ghost|danger|link`),
+`Card`, `Badge`, `Input`/`Textarea`/`Select`/`Label`/`Field` (Field wires `aria-describedby` and
+`aria-invalid`), `Modal`, `Toast`, `Avatar`, `States` (`Skeleton`/`CardGridSkeleton`/`EmptyState`/
+`ErrorState`/`Spinner`), plus the editorial layer: `Editorial.jsx` (`Eyebrow`, `Display`, `Rule`,
+`Price`, `PageHeader`, `StatNumber`, `Stat`), `Reveal.jsx` (`Reveal`/`RevealGroup`/`RevealItem`) and
+`ImageFrame.jsx`. Reach for these before writing markup; **every image goes through `ImageFrame`**,
+which declares its aspect ratio and takes a `fallback` node — most seeded listings have no photo, so
+the card renders a typographic category tile instead of a grey box.
+
+`Modal` and `CommandPalette` both use `hooks/useDismissable.js` for Escape, scroll lock, focus trap
+and focus restore, so they cannot drift apart.
+
+**One focus language:** the global `:focus-visible` outline in `index.css`. Do not add `outline-none`
+plus a `ring-*` to a component — that was two competing treatments, and it silently produced no
+visible indicator on `Button`.
+
+Theme switching is class-based via `ThemeContext` (persists to `localStorage` under
+`campusmarket-theme`, falls back to `prefers-color-scheme`), with an inline script in `index.html`
+that applies the class before first paint. `@custom-variant dark` **is** declared, so `dark:`
+utilities follow the class — but prefer tokens over `dark:` variants.
 
 ## Debugging procedures
 
@@ -370,6 +413,10 @@ Documented so it is not rediscovered or "fixed" accidentally.
   (breaking). `multer@1.4.5-lts.2` has 2025 DoS advisories but `multer-storage-cloudinary@4`
   peer-depends on multer 1.x, so upgrading breaks the upload path. Both left deliberately.
 - **`chart.js` and `react-chartjs-2` are declared in `frontend/package.json` but referenced nowhere.**
+- **Only 4 of the 8 files in `frontend/public/landing/` are photographs.** `cyber_club`,
+  `devops_club` and `I.T._department` are designed committee posters carrying their own branding and
+  ~60 named students' headshots; `hackathon` is a 5-panel collage. The landing composition uses
+  `cricket`, `Football`, `class` and `Tennis` only — do not force the others in.
 - **API wrappers with no UI**: `getMarketInsights`, `checkFraudDraft`, `reanalyzeProduct`,
   `getSellerProducts`, `updateProduct`, `checkFraudById`. The endpoints exist and work; nothing calls
   them. `PUT /api/products/:id` in particular has no edit form.
@@ -379,6 +426,60 @@ Documented so it is not rediscovered or "fixed" accidentally.
   **wipes all users**, so run it against a scratch database unless that is the intent.
 - **Search is an unindexed collection scan** (see MongoDB conventions). Fine at current size; a text
   index is the next step but changes matching semantics (`$text` will not match partial words).
-- `ThemeContext` does not persist the choice or read `prefers-color-scheme`, so the theme resets on
-  reload. `@custom-variant` for class-based `dark:` utilities is commented out in `index.css`.
 - `backend/.env` contains a `DATABASE_URL` key left over from a removed `pg` dependency.
+- **`.claude/skills/frontend-design/` is mis-filed.** `SKILL.md` — the file Claude Code actually
+  loads — carries `name: light-ripple` and describes a Three.js WebGL shader background for a
+  **Next.js + TypeScript + shadcn** project. The intended design guidance is in the sibling
+  `anthropicSkill.md` (`name: frontend-design`). So asking for "the frontend-design skill" loads the
+  wrong thing, and following it would add a `three` dependency and an animated shader hero to a
+  Vite + plain-JS app. Read `anthropicSkill.md` directly, or swap the two files.
+
+## Session checkpoint — 2026-09-06
+
+**Committed** (`ed18bb7`): the whole backend restructure and the frontend/backend contract work —
+`backend/src/**`, the taxonomy source of truth, serializers, validators, rate limits, pagination and
+indexes, the ML boundary changes, `nginx.conf`, `vite.config.js`, and the first-pass frontend fixes
+(pagination hooks, `ListingsContext`, taxonomy mirror, `usePaginatedList`).
+
+**Uncommitted in the working tree**: the frontend visual rework — 24 modified files plus 9 new paths
+(`src/lib/motion.js`, `src/hooks/useDismissable.js`, `src/components/ui/{Editorial,ImageFrame,Reveal}.jsx`,
+`src/components/layout/AuthLayout.jsx`, `src/components/landing/`, `src/pages/Landing.jsx`,
+`frontend/scripts/`). Nothing under `backend/` or `ml_service/` is modified. **Do not re-do this work;
+it is on disk, just not committed.**
+
+Verified at checkpoint: `vite build` clean, `node frontend/scripts/contrast-audit.mjs` exits 0
+(38 token pairs across both themes), backend `npx jest` 52/52, all four containers healthy, and
+`/`, `/marketplace`, `/api/health` all 200 through `http://marketplace.io`.
+
+### Open design questions (not bugs)
+
+The intended design guidance in `.claude/skills/frontend-design/anthropicSkill.md` names several
+"tells of a generated page". The current landing and app surfaces use four of them, and each was a
+deliberate choice worth re-examining rather than a defect:
+
+1. **A single accented word in the headline** — "NEED" sits in an orange highlight block. It is the
+   filled-block variant rather than coloured text (orange *cannot* be display text at 2.52:1), but
+   it is the same move the guidance warns against.
+2. **All-caps tracked-out eyebrow labels above almost every heading** — the `.eyebrow` utility and
+   `PageHeader`'s `eyebrow` prop are used on every page and landing section.
+3. **Meta strings joined by separators** — `ELECTRONICS │ LIKE NEW` on cards and list rows.
+4. **Fade-and-slide-up reveals per section, plus a hover lift on every card** — the guidance calls
+   for one orchestrated moment instead of scattered entrances.
+
+The hero's own 01/02/03 numerals are fine: that content genuinely is a sequence.
+
+### Recommended next step
+
+**Commit the frontend rework first** — it is a large, verified, self-contained change and losing it
+to an accident would be expensive:
+
+```bash
+git add -A frontend/ CLAUDE.md && git commit
+```
+
+Then, in priority order: (1) decide the four design questions above — the cheapest high-impact edit
+is cutting eyebrow labels back to where they carry real information rather than appearing above every
+heading; (2) ship a real frontend build (two-stage Dockerfile → nginx serving `dist/`), which is the
+largest remaining gap between this repo and a deployable app; (3) add vitest + jsdom so the visual
+work has a regression net, since `vite build` is currently the only automated frontend check.
+
