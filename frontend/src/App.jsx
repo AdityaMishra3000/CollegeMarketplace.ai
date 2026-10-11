@@ -1,11 +1,15 @@
-import { useState } from 'react'
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Navbar } from './components/layout/Navbar'
+import MobileNav from './components/layout/MobileNav'
 import CommandPalette from './components/layout/CommandPalette'
 import SellModal from './components/marketplace/SellModal'
 import { useAuth } from './context/AuthContext'
 import { ListingsProvider, useListings } from './context/ListingsContext'
+import { SavedProvider } from './context/SavedContext'
+import { useToast } from './components/ui/Toast'
+import { setRouterNavigation, updateCurrentPathname } from './lib/backButton'
 import { useMotion } from './lib/motion'
 
 // Pages
@@ -16,6 +20,8 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
+import Saved from './pages/Saved'
+import Profile from './pages/Profile'
 
 function ProtectedRoute({ children, requireAdmin = false }) {
   const { user, loading } = useAuth()
@@ -37,9 +43,11 @@ function ProtectedRoute({ children, requireAdmin = false }) {
 
 export default function App() {
   return (
-    <ListingsProvider>
-      <AppShell />
-    </ListingsProvider>
+    <SavedProvider>
+      <ListingsProvider>
+        <AppShell />
+      </ListingsProvider>
+    </SavedProvider>
   )
 }
 
@@ -48,7 +56,18 @@ function AppShell() {
   const [sellModalOpen, setSellModalOpen] = useState(false)
   const { refreshListings } = useListings()
   const location = useLocation()
+  const navigate = useNavigate()
+  const { toast } = useToast()
   const m = useMotion()
+
+  // Connect Android hardware/gesture Back button listener with router navigation and toast
+  useEffect(() => {
+    setRouterNavigation(navigate, () => location.pathname, toast)
+  }, [navigate, toast, location.pathname])
+
+  useEffect(() => {
+    updateCurrentPathname(location.pathname)
+  }, [location.pathname])
 
   /* The landing page composes its own full-bleed sections, so it opts out of the
      constrained page container every other route sits inside. */
@@ -75,7 +94,14 @@ function AppShell() {
         onSell={() => setSellModalOpen(true)}
       />
 
-      <main id="main" className={isFullBleed ? '' : 'mx-auto max-w-[1600px] px-5 py-10 sm:px-6 sm:py-12'}>
+      <main
+        id="main"
+        className={
+          isFullBleed
+            ? ''
+            : 'mx-auto max-w-[1600px] px-4 py-8 pb-28 sm:px-6 sm:py-12 sm:pb-12'
+        }
+      >
         {/* Route change is short by design — navigation must never feel gated. */}
         <AnimatePresence mode="wait" initial={false}>
           <motion.div key={location.pathname} {...m.routeTransition}>
@@ -83,6 +109,7 @@ function AppShell() {
               <Route path="/" element={<Landing />} />
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/product/:id" element={<ProductDetails />} />
+              <Route path="/saved" element={<Saved />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
 
@@ -91,6 +118,14 @@ function AppShell() {
                 element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
                   </ProtectedRoute>
                 }
               />
@@ -108,6 +143,10 @@ function AppShell() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Floating glass bottom nav — visible on phones (< md), hidden on desktop.
+          Renders on web mobile browsers too for consistent mobile experience. */}
+      <MobileNav onOpenSearch={() => setCommandOpen(true)} />
 
       <SellModal
         open={sellModalOpen}

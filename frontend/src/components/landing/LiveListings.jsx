@@ -28,7 +28,7 @@ export function LiveListings() {
 
   return (
     <section className="border-t border-border bg-muted/30">
-      <div className="mx-auto max-w-[1600px] px-5 py-20 sm:px-6 sm:py-24">
+      <div className="mx-auto max-w-[1600px] px-5 py-12 sm:px-6 sm:py-16">
         <Reveal className="flex flex-wrap items-end justify-between gap-6">
           <div className="max-w-xl">
             <Eyebrow accent>Listed this week</Eyebrow>
@@ -43,7 +43,7 @@ export function LiveListings() {
         </Reveal>
 
         {loading ? (
-          <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="space-y-3">
                 <Skeleton className="aspect-[4/3] w-full rounded-xl" />
@@ -53,7 +53,7 @@ export function LiveListings() {
             ))}
           </div>
         ) : error || items.length === 0 ? (
-          <div className="mt-12 border border-dashed border-border p-12 text-center">
+          <div className="mt-8 border border-dashed border-border p-12 text-center">
             <p className="text-sm text-muted-foreground">
               {error
                 ? 'Listings are unavailable right now.'
@@ -63,7 +63,7 @@ export function LiveListings() {
         ) : (
           <RevealGroup
             staggerChildren={0.05}
-            className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"
+            className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"
           >
             {items.slice(0, PREVIEW_COUNT).map((product) => (
               <RevealItem key={product._id}>

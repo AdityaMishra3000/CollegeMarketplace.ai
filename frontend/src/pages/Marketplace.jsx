@@ -107,7 +107,7 @@ export default function Marketplace() {
       {/* Filter bar. Sticks under the navbar so filtering never needs a scroll up.
           On phones the three selects collapse into a sheet — stacked full-width
           they ate a third of the viewport before a single listing appeared. */}
-      <div className="sticky top-16 z-dropdown -mx-5 border-y border-border bg-background/90 px-5 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
+      <div className="sticky top-[calc(4rem+env(safe-area-inset-top,0px))] z-dropdown -mx-4 border-y border-border bg-background/90 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1 lg:max-w-sm">
             <Input

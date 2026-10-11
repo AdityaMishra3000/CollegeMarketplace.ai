@@ -55,3 +55,6 @@ env/
 # Claude Code local configuration
 .claude/
 CLAUDE.local.md
+
+# Local database backups (may contain private user data)
+/backups/

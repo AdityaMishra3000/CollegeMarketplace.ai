@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Mail, Phone, Sparkles, LogIn, Eye } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, Sparkles, LogIn, Eye, Bookmark, Share2 } from 'lucide-react'
 
 import { useApi } from '../hooks/useApi'
 import { useAuth } from '../context/AuthContext'
+import { useSaved } from '../context/SavedContext'
+import { useToast } from '../components/ui/Toast'
 import { getProductById } from '../api/products'
 import { getRecommendations } from '../api/ai'
 import { categoryLabel, conditionLabel, categoryIcon } from '../lib/constants'
 import { useMotion } from '../lib/motion'
+import { hapticTap } from '../lib/native'
+import { cn } from '../lib/utils'
 import { ErrorState, Skeleton } from '../components/ui/States'
 import { Button } from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
@@ -23,6 +27,8 @@ export default function ProductDetails() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { isSaved, toggleSave } = useSaved()
+  const { toast } = useToast()
   const m = useMotion()
 
   const { data: product, loading, error, refetch } = useApi(() => getProductById(id), [id])
@@ -80,15 +86,71 @@ export default function ProductDetails() {
       )}`
     : null
 
+  const saved = isSaved(product._id)
+
+  const handleShare = async () => {
+    hapticTap()
+    const shareData = {
+      title: product.title,
+      text: `Check out ${product.title} for ₹${product.price} on CampusMarket`,
+      url: window.location.href,
+    }
+    if (typeof navigator !== 'undefined' && navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+      try {
+        await navigator.share(shareData)
+        return
+      } catch (err) {
+        if (err.name === 'AbortError') return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      toast('Link copied to clipboard', { type: 'success', duration: 2000 })
+    } catch {
+      toast('Failed to copy link', { type: 'error', duration: 2000 })
+    }
+  }
+
   return (
     <div className="space-y-16">
-      <button
-        onClick={() => navigate(-1)}
-        className="group inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
-        Back
-      </button>
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={() => {
+            hapticTap()
+            navigate(-1)
+          }}
+          className="group inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+          Back
+        </button>
+
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleShare}
+            className="h-9 gap-1.5 px-3 text-xs"
+            aria-label="Share listing"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            <span className="hidden xs:inline">Share</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant={saved ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => toggleSave(product)}
+            className="h-9 gap-1.5 px-3 text-xs"
+            aria-label={saved ? 'Remove from saved' : 'Save listing'}
+          >
+            <Bookmark className={cn('h-3.5 w-3.5', saved && 'fill-current text-primary')} />
+            <span>{saved ? 'Saved' : 'Save'}</span>
+          </Button>
+        </div>
+      </div>
 
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-16">
         {/* ── Photography ─────────────────────────────────────────────── */}
@@ -130,7 +192,7 @@ export default function ProductDetails() {
               {product.isSold && <Badge variant="secondary">Sold</Badge>}
             </div>
 
-            <Display size="display" as="h1" className="mt-5">
+            <Display size="display" as="h1" className="mt-5 break-words">
               {product.title}
             </Display>
 
@@ -146,7 +208,7 @@ export default function ProductDetails() {
 
             <Rule accent className="mt-7" />
 
-            <p className="mt-7 whitespace-pre-line text-[0.9375rem] leading-[1.65] text-muted-foreground">
+            <p className="mt-7 whitespace-pre-line break-words text-[0.9375rem] leading-[1.65] text-muted-foreground">
               {product.description}
             </p>
 

@@ -63,9 +63,9 @@ export default function Hero({ stats }) {
                    line that re-wraps internally would break both the rhythm and
                    the animation. The clamp() on --text-hero shrinks instead. */
                 <span
-  key={i}
-  className="block overflow-hidden whitespace-nowrap pt-[0.16em] pb-[0.18em] -mt-[0.16em]"
->
+                  key={i}
+                  className="block overflow-hidden whitespace-normal sm:whitespace-nowrap break-words pt-[0.16em] pb-[0.18em] -mt-[0.16em]"
+                >
                     <motion.span
                       className="block py-[0.04em]"
                       variants={line}
@@ -196,12 +196,12 @@ function HeroStats({ stats, reduced }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: reduced ? 0 : 0.75, duration: 0.6 }}
-      className="mt-12 grid max-w-lg grid-cols-3 gap-6 border-t border-border pt-6"
+      className="mt-12 grid max-w-lg grid-cols-3 gap-2 sm:gap-6 border-t border-border pt-6"
     >
       {items.map((item) => (
-        <div key={item.label}>
-          <dt className="eyebrow text-muted-foreground">{item.label}</dt>
-          <dd className="mt-2 font-display text-[1.75rem] leading-none tabular-nums text-foreground">
+        <div key={item.label} className="min-w-0">
+          <dt className="eyebrow text-[10px] sm:text-eyebrow break-words text-muted-foreground">{item.label}</dt>
+          <dd className="mt-2 font-display text-base xs:text-lg sm:text-[1.75rem] leading-none tabular-nums text-foreground">
             {typeof item.value === 'number' ? item.value.toLocaleString('en-IN') : item.value}
           </dd>
         </div>

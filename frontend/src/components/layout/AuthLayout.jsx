@@ -15,7 +15,7 @@ export default function AuthLayout({ image, imageAlt, caption, eyebrow, title, c
   const m = useMotion()
 
   return (
-    <div className="-mx-5 -my-10 grid min-h-[calc(100dvh-4rem)] sm:-mx-6 sm:-my-12 lg:grid-cols-2">
+    <div className="-mx-4 -my-8 grid min-h-[calc(100dvh-4rem)] sm:-mx-6 sm:-my-12 lg:grid-cols-2">
       {/* ── Photography ──────────────────────────────────────────────── */}
       <div className="relative hidden border-r border-border lg:block">
         <ImageFrame

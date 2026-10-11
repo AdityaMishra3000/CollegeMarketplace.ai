@@ -7,12 +7,17 @@ import { ToastProvider } from './components/ui/Toast'
 import './index.css'
 import './App.css'
 import { ThemeProvider } from './context/ThemeContext.jsx'
+import { initNativePlugins } from './lib/native'
 
 // Warn in the console if this frontend's taxonomy mirror has drifted from the
 // backend it is talking to. Development only.
 if (import.meta.env.DEV) {
   import('./lib/verifyTaxonomy').then(({ verifyTaxonomy }) => verifyTaxonomy())
 }
+
+// Initialise Capacitor native plugins (status bar, keyboard, splash screen).
+// No-op on web — the existing web app is unaffected.
+initNativePlugins()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

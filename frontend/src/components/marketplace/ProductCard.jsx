@@ -1,26 +1,25 @@
 import { Link } from 'react-router-dom'
+import { Bookmark } from 'lucide-react'
 import Badge from '../ui/Badge'
 import ImageFrame from '../ui/ImageFrame'
 import FraudBadge from '../ai/FraudBadge'
 import { categoryLabel, conditionLabel, categoryIcon } from '../../lib/constants'
 import { cn } from '../../lib/utils'
 import { Price } from '../ui/Editorial'
+import { useSaved } from '../../context/SavedContext'
 
 /**
  * Marketplace listing card.
  *
- * Two deliberate decisions:
- *
- * 1. No photograph is a *designed* state. Most seeded listings have no image, so
- *    a row of grey "no image" boxes would be the first thing a visitor sees.
- *    Instead the tile becomes typographic: the category set large in the display
- *    face over a warm wash. It reads as intentional.
- *
- * 2. The fraud verdict only appears when it says something. A green "Safe" chip
- *    on every one of 24 cards is noise; a caution or danger chip on the two that
- *    need it is information. The full verdict is still on the detail page.
+ * Designed for both desktop and compact mobile views:
+ * - Touch targets >= 44dp for mobile interactions.
+ * - Save/bookmark action in the top-right corner.
+ * - Robust text wrapping with break-words so long unbroken titles never cause overflow.
  */
 export default function ProductCard({ product }) {
+  const { isSaved, toggleSave } = useSaved()
+  const saved = isSaved(product._id)
+
   const CategoryIcon = categoryIcon(product.category)
   const image = product.images?.[0] || product.imageUrl
   const risk = product.aiFraud?.risk_level
@@ -35,26 +34,48 @@ export default function ProductCard({ product }) {
         'focus-within:border-primary focus-within:shadow-lg'
       )}
     >
-      <Link to={`/product/${product._id}`} className="block outline-none" tabIndex={-1} aria-hidden="true">
-        <ImageFrame
-          src={image}
-          alt={product.title}
-          ratio="landscape"
-          zoom
-          fallback={
-            <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
-              <CategoryIcon
-                className="absolute h-28 w-28 text-primary/[0.10] transition-transform duration-500 group-hover:scale-110"
-                strokeWidth={1.25}
-                aria-hidden="true"
-              />
-              <span className="relative px-4 text-center font-display text-heading leading-tight text-muted-foreground/80 transition-colors duration-300 group-hover:text-primary-ink">
-                {categoryLabel(product.category)}
-              </span>
-            </div>
-          }
-        />
-      </Link>
+      <div className="relative">
+        <Link to={`/product/${product._id}`} className="block outline-none" tabIndex={-1} aria-hidden="true">
+          <ImageFrame
+            src={image}
+            alt={product.title}
+            ratio="landscape"
+            zoom
+            fallback={
+              <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
+                <CategoryIcon
+                  className="absolute h-28 w-28 text-primary/[0.10] transition-transform duration-500 group-hover:scale-110"
+                  strokeWidth={1.25}
+                  aria-hidden="true"
+                />
+                <span className="relative px-4 text-center font-display text-heading leading-tight text-muted-foreground/80 transition-colors duration-300 group-hover:text-primary-ink">
+                  {categoryLabel(product.category)}
+                </span>
+              </div>
+            }
+          />
+        </Link>
+
+        {/* Save / Favorite button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            toggleSave(product)
+          }}
+          className={cn(
+            'absolute right-2.5 top-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-full',
+            'border border-white/20 bg-background/80 backdrop-blur-md shadow-sm',
+            'transition-transform active:scale-90',
+            saved ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+          )}
+          aria-label={saved ? `Remove ${product.title} from saved` : `Save ${product.title}`}
+          title={saved ? 'Remove from saved' : 'Save listing'}
+        >
+          <Bookmark className={cn('h-4 w-4', saved && 'fill-primary text-primary')} />
+        </button>
+      </div>
 
       {/* Price sits on the image edge — the one figure that must be unmissable. */}
       <div className="relative -mt-px flex items-start justify-between gap-3 border-b border-border px-4 py-3">
@@ -69,7 +90,7 @@ export default function ProductCard({ product }) {
       </div>
 
       <div className="flex flex-1 flex-col p-4">
-        <h3 className="text-[0.9375rem] font-semibold leading-snug tracking-tight text-foreground">
+        <h3 className="break-words text-[0.9375rem] font-semibold leading-snug tracking-tight text-foreground">
           <Link
             to={`/product/${product._id}`}
             className="outline-none transition-colors hover:text-primary-ink focus-visible:text-primary-ink"
@@ -78,7 +99,7 @@ export default function ProductCard({ product }) {
           </Link>
         </h3>
 
-        <p className="mt-2 line-clamp-2 text-[0.8125rem] leading-relaxed text-muted-foreground">
+        <p className="mt-2 line-clamp-2 break-words text-[0.8125rem] leading-relaxed text-muted-foreground">
           {product.description}
         </p>
 

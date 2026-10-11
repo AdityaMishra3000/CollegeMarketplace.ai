@@ -93,20 +93,34 @@ export default function Dashboard() {
           />
         ) : (
           <>
-            <RevealGroup
-              staggerChildren={0.035}
-              className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card"
-            >
-              {products.map((item) => (
-                <RevealItem key={item._id}>
-                  <ListingRow
-                    item={item}
-                    onMarkSold={() => markSold(item._id)}
-                    onDelete={() => remove(item._id, item.title)}
-                  />
-                </RevealItem>
-              ))}
-            </RevealGroup>
+{typeof window !== 'undefined' &&
+window.Capacitor?.isNativePlatform?.() ? (
+  <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
+    {products.map((item) => (
+      <ListingRow
+        key={item._id}
+        item={item}
+        onMarkSold={() => markSold(item._id)}
+        onDelete={() => remove(item._id, item.title)}
+      />
+    ))}
+  </div>
+) : (
+  <RevealGroup
+    staggerChildren={0.035}
+    className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card"
+  >
+    {products.map((item) => (
+      <RevealItem key={item._id}>
+        <ListingRow
+          item={item}
+          onMarkSold={() => markSold(item._id)}
+          onDelete={() => remove(item._id, item.title)}
+        />
+      </RevealItem>
+    ))}
+  </RevealGroup>
+)}
 
             {hasMore && (
               <div className="flex justify-center pt-2">

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Sparkles, Check } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Sparkles, Check, Camera, Image, X, Upload, Link as LinkIcon } from 'lucide-react'
 import Modal from '../ui/Modal'
 import { Input, Field, Select, Textarea } from '../ui/Input'
 import { Button } from '../ui/Button'
@@ -8,6 +8,7 @@ import { CATEGORIES, CONDITIONS } from '../../lib/constants'
 import { createProduct } from '../../api/products'
 import { predictPrice } from '../../api/ai'
 import { useToast } from '../ui/Toast'
+import { pickPhoto, isNative, hapticTap } from '../../lib/native'
 
 const EMPTY = {
   title: '',
@@ -20,17 +21,74 @@ const EMPTY = {
 
 export default function SellModal({ open, onClose, onSuccess }) {
   const { toast } = useToast()
+  const fileInputRef = useRef(null)
 
   const [loading, setLoading] = useState(false)
   const [priceLoading, setPriceLoading] = useState(false)
   const [suggestion, setSuggestion] = useState(null)
   const [formData, setFormData] = useState(EMPTY)
+  const [showUrlInput, setShowUrlInput] = useState(false)
 
   const update = (event) => {
     const { name, value } = event.target
     setFormData((prev) => ({ ...prev, [name]: value }))
     // A suggestion is only valid for the inputs it was made from.
     if (['title', 'description', 'category', 'condition'].includes(name)) setSuggestion(null)
+  }
+
+  const handleCameraCapture = async () => {
+    hapticTap()
+    try {
+      const photo = await pickPhoto('camera')
+      if (photo?.dataUrl) {
+        setFormData((prev) => ({ ...prev, imageUrl: photo.dataUrl }))
+        toast('Photo captured successfully', { type: 'success' })
+      }
+    } catch {
+      toast('Could not access camera', { type: 'error' })
+    }
+  }
+
+  const handleGalleryPick = async () => {
+    hapticTap()
+    try {
+      const photo = await pickPhoto('photos')
+      if (photo?.dataUrl) {
+        setFormData((prev) => ({ ...prev, imageUrl: photo.dataUrl }))
+        toast('Photo selected', { type: 'success' })
+      }
+    } catch {
+      toast('Could not access photos', { type: 'error' })
+    }
+  }
+
+  const handleFileInput = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast('Please select an image file', { type: 'error' })
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result
+      if (dataUrl) {
+        setFormData((prev) => ({ ...prev, imageUrl: dataUrl }))
+        toast('Photo attached', { type: 'success' })
+      }
+    }
+    reader.onerror = () => {
+      toast('Could not read image file', { type: 'error' })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleClearPhoto = () => {
+    hapticTap()
+    setFormData((prev) => ({ ...prev, imageUrl: '' }))
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const suggest = async () => {
@@ -80,6 +138,7 @@ export default function SellModal({ open, onClose, onSuccess }) {
       toast('Your item is live on the marketplace.', { type: 'success', title: 'Listed' })
       setFormData(EMPTY)
       setSuggestion(null)
+      setShowUrlInput(false)
       onSuccess?.()
       onClose()
     } catch (err) {
@@ -231,16 +290,114 @@ export default function SellModal({ open, onClose, onSuccess }) {
               required
             />
           </Field>
-          <Field label="Image URL" htmlFor="imageUrl" hint="Optional — paste a link to a photo.">
-            <Input
-              id="imageUrl"
-              name="imageUrl"
-              type="url"
-              placeholder="https://…"
-              value={formData.imageUrl}
-              onChange={update}
-            />
-          </Field>
+
+          {/* Photo upload / camera section */}
+          <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Item Photo
+            </label>
+
+            {formData.imageUrl ? (
+              <div className="relative overflow-hidden rounded-xl border border-border bg-card p-2">
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
+                  <img
+                    src={formData.imageUrl}
+                    alt="Listing preview"
+                    className="h-full w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleClearPhoto}
+                    className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-background/80 text-foreground backdrop-blur-md transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                    aria-label="Remove photo"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="mt-2 flex items-center justify-between px-1">
+                  <span className="text-xs text-muted-foreground">Photo attached</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowUrlInput((v) => !v)}
+                    className="text-xs text-primary-ink underline hover:opacity-80"
+                  >
+                    {showUrlInput ? 'Hide URL' : 'Edit URL'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  {isNative ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCameraCapture}
+                        className="flex-1"
+                      >
+                        <Camera className="h-4 w-4" />
+                        Take Photo
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleGalleryPick}
+                        className="flex-1"
+                      >
+                        <Image className="h-4 w-4" />
+                        Gallery
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1"
+                      >
+                        <Upload className="h-4 w-4" />
+                        Upload Photo
+                      </Button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleFileInput}
+                      />
+                    </>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowUrlInput((v) => !v)}
+                  >
+                    <LinkIcon className="h-4 w-4" />
+                    URL
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {showUrlInput && (
+              <div className="mt-2">
+                <Input
+                  id="imageUrl"
+                  name="imageUrl"
+                  type="url"
+                  placeholder="https://… (paste direct image URL)"
+                  value={formData.imageUrl}
+                  onChange={update}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </form>
     </Modal>

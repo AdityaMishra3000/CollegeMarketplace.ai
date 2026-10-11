@@ -96,7 +96,7 @@ export default function Modal({
             <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 sm:px-7 sm:pb-7">{children}</div>
 
             {footer && (
-              <footer className="flex items-center justify-end gap-2.5 border-t border-border bg-muted/40 px-5 py-4 sm:px-7">
+              <footer className="flex items-center justify-end gap-2.5 border-t border-border bg-muted/40 px-5 py-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)] sm:px-7 sm:py-4">
                 {footer}
               </footer>
             )}

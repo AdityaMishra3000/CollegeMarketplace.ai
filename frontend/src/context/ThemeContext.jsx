@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { syncStatusBar } from '../lib/native'
 
 const STORAGE_KEY = 'campusmarket-theme'
 const ThemeContext = createContext({ theme: 'light', setTheme: () => {}, toggle: () => {} })
@@ -29,6 +30,8 @@ export function ThemeProvider({ children }) {
     root.classList.remove('light', 'dark')
     root.classList.add(theme)
     root.style.colorScheme = theme
+    // Sync the native status bar to match (no-op on web)
+    syncStatusBar(theme)
     try {
       window.localStorage.setItem(STORAGE_KEY, theme)
     } catch {

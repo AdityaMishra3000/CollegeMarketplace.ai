@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { registerOverlay } from '../lib/backButton'
 
 const FOCUSABLE = [
   'a[href]',
@@ -13,15 +14,21 @@ const FOCUSABLE = [
  * Everything an overlay needs to behave: Escape to dismiss, a locked page
  * behind it, focus kept inside, and focus returned to whatever opened it.
  *
- * Shared by Modal and CommandPalette. The palette previously advertised `ESC` in
- * its own footer while handling only Arrow and Enter keys, never locked the page
- * scroll, and dropped focus on close.
+ * Shared by Modal and CommandPalette.
+ * Integrates with Android Back button stack so pressing hardware/gesture back
+ * automatically dismisses the active overlay first.
  *
  * Returns a ref to attach to the overlay container.
  */
 export function useDismissable(open, onClose, { autoFocus = true, lockScroll = true } = {}) {
   const containerRef = useRef(null)
   const restoreRef = useRef(null)
+
+  // Register with Android hardware/gesture Back button stack
+  useEffect(() => {
+    if (!open || !onClose) return
+    return registerOverlay('dismissable-overlay', onClose)
+  }, [open, onClose])
 
   // Remember the trigger so focus can go back to it.
   useEffect(() => {
