@@ -165,7 +165,8 @@ router.put(
     })
 );
 
-/** Mark a listing sold. Availability flags are derived by the model. */
+
+/** Mark a listing sold without revalidating unrelated legacy fields. */
 router.patch(
     '/:id/sell',
     authenticate,
@@ -173,14 +174,39 @@ router.patch(
     validate.productId,
     asyncHandler(async (req, res) => {
         const product = await loadOwnProduct(req);
+
+        // Update only availability fields. Document.save() would revalidate
+        // required fields such as sellerPhone on older listings.
+        const result = await Product.updateOne(
+            { _id: product._id },
+            {
+                $set: {
+                    quantity: 0,
+                    status: 'sold_out',
+                    isActive: false,
+                    isSold: true
+                }
+            },
+            { runValidators: true }
+        );
+
+        if (result.matchedCount === 0) {
+            throw ApiError.notFound('Product not found');
+        }
+
+        // Keep the in-memory document consistent for serialization.
         product.quantity = 0;
-        await product.save();
+        product.status = 'sold_out';
+        product.isActive = false;
+        product.isSold = true;
+
         res.json({
             message: 'Item marked as sold successfully',
             product: serialize.productCard(product)
         });
     })
 );
+
 
 router.delete(
     '/:id',
