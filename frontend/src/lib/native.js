@@ -95,13 +95,8 @@ export async function syncStatusBar(theme) {
  * Fire a light haptic tap. Used for nav interactions and button presses.
  */
 export async function hapticTap() {
-  if (!isNative) return
-  try {
-    const { Haptics, ImpactStyle } = await import('@capacitor/haptics')
-    await Haptics.impact({ style: ImpactStyle.Light })
-  } catch {
-    // ignore
-  }
+  // Haptic feedback disabled for CampusMarket.
+  return
 }
 
 /**
