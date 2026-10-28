@@ -16,7 +16,7 @@ process.env.MONGODB_URI =
 process.env.ML_SERVICE_URL = process.env.ML_SERVICE_URL_TEST || 'http://127.0.0.1:59999';
 process.env.ML_TIMEOUT_MS = '500';
 process.env.ML_RECOMMEND_TIMEOUT_MS = '500';
-process.env.CORS_ORIGINS = 'http://localhost:5173';
+process.env.CORS_ORIGINS = 'http://localhost:5173,https://localhost,capacitor://localhost';
 delete process.env.CLOUDINARY_CLOUD_NAME;
 delete process.env.CLOUDINARY_API_KEY;
 delete process.env.CLOUDINARY_API_SECRET;

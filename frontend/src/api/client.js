@@ -24,6 +24,7 @@ API.interceptors.request.use(
         window.Capacitor?.isNativePlatform?.() === true ||
         window.location.protocol === 'capacitor:' ||
         (
+          window.location.protocol === 'https:' &&
           window.location.hostname === 'localhost' &&
           window.location.port === ''
         )

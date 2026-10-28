@@ -108,6 +108,21 @@ if (CORS_ORIGINS.length === 0) {
     }
 }
 
+// Always ensure essential local development and native mobile app origins are allowed
+const ESSENTIAL_ORIGINS = [
+    'https://localhost',
+    'capacitor://localhost',
+    'http://localhost',
+    'http://localhost:80',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+];
+for (const origin of ESSENTIAL_ORIGINS) {
+    if (!CORS_ORIGINS.includes(origin)) {
+        CORS_ORIGINS.push(origin);
+    }
+}
+
 // ── Image uploads ─────────────────────────────────────────────────────────
 // Cloudinary used to fall back to the literal string 'demo', which produced
 // confusing upstream failures. Uploads are now explicitly disabled unless all

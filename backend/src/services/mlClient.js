@@ -20,6 +20,7 @@ const PATHS = {
     recommend: '/api/ml/recommend',
     fraudCheck: '/api/ml/fraud-check',
     fraudCheckBatch: '/api/ml/batch-fraud-check',
+    verifyVideo: '/api/ml/verify-video',
     health: '/health'
 };
 
@@ -170,6 +171,16 @@ async function fraudCheckBatch(items) {
     return verdicts;
 }
 
+/** Video verification request to ML service. */
+async function verifyVideo({ product, videoMeta = {} }) {
+    return request(PATHS.verifyVideo, {
+        payload: {
+            product: toMLProduct(product),
+            video_meta: videoMeta
+        }
+    });
+}
+
 /** Used by GET /api/health. Never throws. */
 async function health() {
     try {
@@ -185,6 +196,7 @@ module.exports = {
     recommend,
     fraudCheck,
     fraudCheckBatch,
+    verifyVideo,
     health,
     toMLProduct,
     toFraudVerdict,

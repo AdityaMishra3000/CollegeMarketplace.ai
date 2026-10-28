@@ -8,6 +8,9 @@ const validate = require('../middleware/validate');
 const serialize = require('../serializers');
 const productService = require('../services/productService');
 const fraudService = require('../services/fraudService');
+const { requireNativeApp } = require('../middleware/nativeApp');
+const { handleVideoUpload } = require('../middleware/videoUpload');
+const verificationService = require('../services/verificationService');
 
 const router = express.Router();
 
@@ -217,6 +220,51 @@ router.delete(
         const product = await loadOwnProduct(req);
         await product.deleteOne();
         res.json({ message: 'Deleted' });
+    })
+);
+
+/**
+ * Submit a native camera video for product verification.
+ * Mobile only: requires authenticated owner and native Android app client workflow.
+ */
+router.post(
+    '/:id/verify-video',
+    authenticate,
+    writeLimiter,
+    validate.productId,
+    requireNativeApp,
+    handleVideoUpload,
+    asyncHandler(async (req, res) => {
+        const product = await loadOwnProduct(req);
+        if (!req.file) {
+            throw ApiError.badRequest('No video file was uploaded.');
+        }
+
+        const result = await verificationService.verifyProductVideo({
+            product,
+            file: req.file,
+            durationSeconds: req.body.duration
+        });
+
+        res.status(200).json({
+            message: 'Video verification processed',
+            verification: serialize.videoVerificationSummary(result)
+        });
+    })
+);
+
+/**
+ * Get verification status for a product.
+ */
+router.get(
+    '/:id/verification',
+    validate.productId,
+    asyncHandler(async (req, res) => {
+        const product = await Product.findById(req.params.id).select('videoVerification').lean();
+        if (!product) throw ApiError.notFound('Product not found');
+        res.json({
+            verification: serialize.videoVerificationSummary(product.videoVerification)
+        });
     })
 );
 

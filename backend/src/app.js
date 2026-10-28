@@ -55,7 +55,7 @@ function createApp() {
                 );
             },
             methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization'],
+            allowedHeaders: ['Content-Type', 'Authorization', 'X-App-Platform', 'X-Requested-With'],
             maxAge: 600
         })
     );

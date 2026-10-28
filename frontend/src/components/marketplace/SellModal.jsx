@@ -1,11 +1,11 @@
 import { useState, useRef } from 'react'
-import { Sparkles, Check, Camera, Image, X, Upload, Link as LinkIcon } from 'lucide-react'
+import { Sparkles, Check, Camera, Image, X, Upload, Link as LinkIcon, Video, RefreshCw } from 'lucide-react'
 import Modal from '../ui/Modal'
 import { Input, Field, Select, Textarea } from '../ui/Input'
 import { Button } from '../ui/Button'
 import { Eyebrow, Price } from '../ui/Editorial'
 import { CATEGORIES, CONDITIONS } from '../../lib/constants'
-import { createProduct } from '../../api/products'
+import { createProduct, uploadVerificationVideo } from '../../api/products'
 import { predictPrice } from '../../api/ai'
 import { useToast } from '../ui/Toast'
 import { pickPhoto, isNative, hapticTap } from '../../lib/native'
@@ -22,6 +22,7 @@ const EMPTY = {
 export default function SellModal({ open, onClose, onSuccess }) {
   const { toast } = useToast()
   const fileInputRef = useRef(null)
+  const videoInputRef = useRef(null)
 
   const [loading, setLoading] = useState(false)
   const [priceLoading, setPriceLoading] = useState(false)
@@ -29,11 +30,83 @@ export default function SellModal({ open, onClose, onSuccess }) {
   const [formData, setFormData] = useState(EMPTY)
   const [showUrlInput, setShowUrlInput] = useState(false)
 
+  // Mobile-only video verification state
+  const [videoFile, setVideoFile] = useState(null)
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState(null)
+  const [videoDuration, setVideoDuration] = useState(null)
+  const [videoSizeMb, setVideoSizeMb] = useState(null)
+
   const update = (event) => {
     const { name, value } = event.target
     setFormData((prev) => ({ ...prev, [name]: value }))
     // A suggestion is only valid for the inputs it was made from.
     if (['title', 'description', 'category', 'condition'].includes(name)) setSuggestion(null)
+  }
+
+  const handleVideoSelect = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // 1. Max size: 30 MB
+    const maxBytes = 30 * 1024 * 1024
+    if (file.size > maxBytes) {
+      toast('Video exceeds 30 MB limit. Please record a shorter clip.', { type: 'error' })
+      if (videoInputRef.current) videoInputRef.current.value = ''
+      return
+    }
+
+    if (!file.type.startsWith('video/')) {
+      toast('Please select a valid video recording.', { type: 'error' })
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(file)
+    const tempVideo = document.createElement('video')
+    tempVideo.preload = 'metadata'
+    tempVideo.src = objectUrl
+
+    tempVideo.onloadedmetadata = () => {
+      const duration = tempVideo.duration
+      if (duration > 30.5) {
+        toast(`Video is ${Math.round(duration)}s long. Maximum allowed duration is 30s.`, {
+          type: 'error',
+        })
+        URL.revokeObjectURL(objectUrl)
+        if (videoInputRef.current) videoInputRef.current.value = ''
+        return
+      }
+      if (duration < 3.0) {
+        toast(`Video is too short (${duration.toFixed(1)}s). Minimum 3s required.`, {
+          type: 'error',
+        })
+        URL.revokeObjectURL(objectUrl)
+        if (videoInputRef.current) videoInputRef.current.value = ''
+        return
+      }
+
+      setVideoFile(file)
+      setVideoPreviewUrl(objectUrl)
+      setVideoDuration(duration)
+      setVideoSizeMb((file.size / (1024 * 1024)).toFixed(1))
+      toast('Verification video recorded', { type: 'success' })
+    }
+
+    tempVideo.onerror = () => {
+      setVideoFile(file)
+      setVideoPreviewUrl(objectUrl)
+      setVideoDuration(10)
+      setVideoSizeMb((file.size / (1024 * 1024)).toFixed(1))
+    }
+  }
+
+  const handleClearVideo = () => {
+    hapticTap()
+    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl)
+    setVideoFile(null)
+    setVideoPreviewUrl(null)
+    setVideoDuration(null)
+    setVideoSizeMb(null)
+    if (videoInputRef.current) videoInputRef.current.value = ''
   }
 
   const handleCameraCapture = async () => {
@@ -127,7 +200,7 @@ export default function SellModal({ open, onClose, onSuccess }) {
     event.preventDefault()
     setLoading(true)
     try {
-      await createProduct({
+      const created = await createProduct({
         title: formData.title,
         description: formData.description,
         price: Number.parseFloat(formData.price),
@@ -135,8 +208,34 @@ export default function SellModal({ open, onClose, onSuccess }) {
         condition: formData.condition,
         images: formData.imageUrl ? [formData.imageUrl] : [],
       })
-      toast('Your item is live on the marketplace.', { type: 'success', title: 'Listed' })
+
+      if (isNative && videoFile && created?._id) {
+        try {
+          toast('Processing video verification...', { type: 'info' })
+          const res = await uploadVerificationVideo(created._id, videoFile, videoDuration)
+          const status = res?.verification?.status
+          if (status === 'verified') {
+            toast('Listing created and video verified!', { type: 'success', title: 'Verified' })
+          } else if (status === 'review_required') {
+            toast('Listing created; video submitted for review.', {
+              type: 'info',
+              title: 'Under Review',
+            })
+          } else {
+            toast('Listing created with video.', { type: 'success' })
+          }
+        } catch (uploadErr) {
+          toast(
+            uploadErr?.response?.data?.message || 'Listing created, but video upload failed.',
+            { type: 'error' }
+          )
+        }
+      } else {
+        toast('Your item is live on the marketplace.', { type: 'success', title: 'Listed' })
+      }
+
       setFormData(EMPTY)
+      handleClearVideo()
       setSuggestion(null)
       setShowUrlInput(false)
       onSuccess?.()
@@ -399,6 +498,95 @@ export default function SellModal({ open, onClose, onSuccess }) {
             )}
           </div>
         </div>
+
+        {/* ── Mobile-Only Video Verification ─────────────────────────── */}
+        {isNative && (
+          <div className="rounded-xl border border-border bg-muted/30 p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-2">
+              <Eyebrow accent className="flex items-center gap-1.5">
+                <Video className="h-3.5 w-3.5" aria-hidden="true" />
+                Product Video Verification
+              </Eyebrow>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                Mobile Only
+              </span>
+            </div>
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+              Record a quick 5–30s camera video showing your item and condition to earn a Verified badge.
+            </p>
+
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept="video/mp4,video/webm,video/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleVideoSelect}
+            />
+
+            {videoPreviewUrl ? (
+              <div className="mt-4 space-y-3">
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-black">
+                  <video
+                    src={videoPreviewUrl}
+                    controls
+                    playsInline
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">
+                      {videoDuration ? `${videoDuration.toFixed(1)}s` : 'Recorded'}
+                    </span>
+                    <span>•</span>
+                    <span>{videoSizeMb} MB</span>
+                    <span className="rounded bg-success/15 px-1.5 py-0.5 text-[10px] font-semibold text-success">
+                      Ready
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => videoInputRef.current?.click()}
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Retake
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearVideo}
+                      className="text-destructive hover:bg-destructive/10"
+                    >
+                      <X className="h-3 w-3" />
+                      Discard
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    hapticTap()
+                    videoInputRef.current?.click()
+                  }}
+                  className="w-full gap-2 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5"
+                >
+                  <Camera className="h-4 w-4 text-primary" />
+                  <span>Record Verification Video (Max 30s)</span>
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </form>
     </Modal>
   )

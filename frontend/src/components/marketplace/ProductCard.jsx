@@ -3,6 +3,7 @@ import { Bookmark } from 'lucide-react'
 import Badge from '../ui/Badge'
 import ImageFrame from '../ui/ImageFrame'
 import FraudBadge from '../ai/FraudBadge'
+import VerificationBadge from './VerificationBadge'
 import { categoryLabel, conditionLabel, categoryIcon } from '../../lib/constants'
 import { cn } from '../../lib/utils'
 import { Price } from '../ui/Editorial'
@@ -78,15 +79,20 @@ export default function ProductCard({ product }) {
       </div>
 
       {/* Price sits on the image edge — the one figure that must be unmissable. */}
-      <div className="relative -mt-px flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+      <div className="relative -mt-px flex items-start justify-between gap-2 border-b border-border px-4 py-3">
         <Price value={product.price} size="md" />
-        {product.isSold ? (
-          <Badge variant="secondary" size="sm">
-            Sold
-          </Badge>
-        ) : (
-          showRisk && <FraudBadge data={product.aiFraud} compact size="sm" />
-        )}
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {product.videoVerification?.status && product.videoVerification.status !== 'not_submitted' && (
+            <VerificationBadge data={product.videoVerification} compact />
+          )}
+          {product.isSold ? (
+            <Badge variant="secondary" size="sm">
+              Sold
+            </Badge>
+          ) : (
+            showRisk && <FraudBadge data={product.aiFraud} compact size="sm" />
+          )}
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col p-4">

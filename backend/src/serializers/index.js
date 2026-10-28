@@ -37,6 +37,27 @@ function fraudSummary(aiFraud) {
     };
 }
 
+function videoVerificationSummary(vv) {
+    if (!vv || !vv.status || vv.status === 'not_submitted') {
+        return { status: 'not_submitted' };
+    }
+    return {
+        status: vv.status,
+        duration_seconds: vv.duration_seconds ?? null,
+        file_size_bytes: vv.file_size_bytes ?? null,
+        submitted_at: vv.submitted_at ?? null,
+        verified_at: vv.verified_at ?? null,
+        platform: vv.platform ?? 'android_native',
+        details: vv.details
+            ? {
+                  checks: vv.details.checks || {},
+                  explanation: vv.details.explanation || '',
+                  review_reason: vv.details.review_reason || null
+              }
+            : null
+    };
+}
+
 /** Shared fields — safe for anonymous callers. */
 function productBase(product) {
     return {
@@ -56,6 +77,7 @@ function productBase(product) {
         isFlagged: Boolean(product.isFlagged),
         // The safety badge is a user-facing feature, so the verdict is public.
         aiFraud: fraudSummary(product.aiFraud),
+        videoVerification: videoVerificationSummary(product.videoVerification),
         createdAt: product.createdAt,
         seller: sellerSummary(product.seller)
     };
@@ -119,5 +141,6 @@ module.exports = {
     userSelf,
     adminUser,
     sellerSummary,
-    fraudSummary
+    fraudSummary,
+    videoVerificationSummary
 };

@@ -19,6 +19,7 @@ import Badge from '../components/ui/Badge'
 import Avatar from '../components/ui/Avatar'
 import ImageFrame from '../components/ui/ImageFrame'
 import FraudBadge from '../components/ai/FraudBadge'
+import VerificationBadge from '../components/marketplace/VerificationBadge'
 import { Display, Eyebrow, Price, Rule } from '../components/ui/Editorial'
 import { Reveal, RevealGroup, RevealItem } from '../components/ui/Reveal'
 import ProductCard from '../components/marketplace/ProductCard'
@@ -190,6 +191,9 @@ export default function ProductDetails() {
               <span className="h-3 w-px bg-border" aria-hidden="true" />
               <Eyebrow>{conditionLabel(product.condition)}</Eyebrow>
               {product.isSold && <Badge variant="secondary">Sold</Badge>}
+              {product.videoVerification?.status && product.videoVerification.status !== 'not_submitted' && (
+                <VerificationBadge data={product.videoVerification} compact />
+              )}
             </div>
 
             <Display size="display" as="h1" className="mt-5 break-words">
@@ -217,6 +221,14 @@ export default function ProductDetails() {
               <div className="mt-8">
                 <Eyebrow className="mb-3">Safety check</Eyebrow>
                 <FraudBadge data={product.aiFraud} />
+              </div>
+            )}
+
+            {/* Mobile Video Verification result — read-only display across platforms */}
+            {product.videoVerification?.status && product.videoVerification.status !== 'not_submitted' && (
+              <div className="mt-8">
+                <Eyebrow className="mb-3">Product Verification</Eyebrow>
+                <VerificationBadge data={product.videoVerification} />
               </div>
             )}
 

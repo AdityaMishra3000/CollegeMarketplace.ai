@@ -52,6 +52,24 @@ export const sellOne = (id) => API.patch(`/products/${id}/sell`)
 
 export const deleteProduct = (id) => API.delete(`/products/${id}`)
 
+/** Submit a native-recorded video for product verification. */
+export const uploadVerificationVideo = (id, videoFile, duration) => {
+  const formData = new FormData()
+  formData.append('video', videoFile)
+  if (duration !== undefined && duration !== null) {
+    formData.append('duration', String(duration))
+  }
+  return API.post(`/products/${id}/verify-video`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      'X-App-Platform': 'android-native'
+    }
+  })
+}
+
+/** Read-only verification status for a product. */
+export const getProductVerification = (id) => API.get(`/products/${id}/verification`)
+
 // -- ADMIN --
 
 export const getStats = () => API.get('/admin/stats')

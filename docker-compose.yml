@@ -75,7 +75,7 @@ services:
       # `marketplace.io` is mapped to 127.0.0.1 in /etc/hosts for this deployment.
       # Override for another deployment without editing this file:
       #   CORS_ORIGINS=https://example.edu docker compose up -d
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://marketplace.io,http://marketplace.io:5173,http://localhost,http://localhost:5173}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://marketplace.io,http://marketplace.io:5173,http://localhost,http://localhost:5173,https://localhost,capacitor://localhost}
     depends_on:
       mongo:
         condition: service_started

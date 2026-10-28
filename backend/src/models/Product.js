@@ -27,6 +27,33 @@ const aiFraudSchema = new mongoose.Schema(
     { _id: false }
 );
 
+/**
+ * Mobile-only product video verification record.
+ * Tracks automated video screening and integrity status.
+ */
+const videoVerificationSchema = new mongoose.Schema(
+    {
+        status: {
+            type: String,
+            enum: ['not_submitted', 'pending', 'verified', 'rejected', 'review_required', 'failed'],
+            default: 'not_submitted'
+        },
+        video_filename: { type: String, default: null },
+        file_size_bytes: { type: Number, default: null },
+        duration_seconds: { type: Number, default: null },
+        mime_type: { type: String, default: null },
+        submitted_at: { type: Date, default: null },
+        verified_at: { type: Date, default: null },
+        platform: { type: String, default: 'android_native' },
+        details: {
+            checks: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+            explanation: { type: String, default: '' },
+            review_reason: { type: String, default: null }
+        }
+    },
+    { _id: false }
+);
+
 const productSchema = new mongoose.Schema(
     {
         title: { type: String, required: true, trim: true, minlength: 3, maxlength: 140 },
@@ -51,6 +78,7 @@ const productSchema = new mongoose.Schema(
         views: { type: Number, default: 0, min: 0 },
         isFlagged: { type: Boolean, default: false },
         aiFraud: { type: aiFraudSchema, default: () => ({}) },
+        videoVerification: { type: videoVerificationSchema, default: () => ({ status: 'not_submitted' }) },
         createdAt: { type: Date, default: Date.now }
     },
     { versionKey: false }
